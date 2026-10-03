@@ -13,8 +13,9 @@
     "data:kuali": "tsx scripts/fetch-kuali.ts",
     "data:opendata": "tsx --env-file-if-exists=.env.local scripts/fetch-opendata.ts",
     "data:build": "tsx scripts/build-dataset.ts",
-    "data": "pnpm data:kuali && pnpm data:opendata && pnpm data:build",
-    "typecheck": "tsc -b"
+    "data": "pnpm data:kuali && pnpm data:opendata && pnpm data:build && pnpm data:validate",
+    "typecheck": "tsc -b",
+    "data:validate": "tsx scripts/validate-requirements.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -65,7 +65,7 @@ function parseLeaf(result: HTMLElement): Requisite {
 
   if ((m = text.match(/^Must have completed at least (\d+) of the following/i)) && codes.length)
     return coursesNode(codes, Number(m[1]))
-  if (/^Must have completed (the following|all of the following)/i.test(text) && codes.length)
+  if (/^Must have completed( the following| all of the following)?:/i.test(text) && codes.length)
     return coursesNode(codes, 'all')
   if ((m = text.match(/^Completed or concurrently enrolled in at least (\d+) of the following/i)) && codes.length)
     return coursesNode(codes, Number(m[1]), { concurrentOk: true })
@@ -101,6 +101,17 @@ function parseLeaf(result: HTMLElement): Requisite {
     return { kind: 'program', mode: 'in', programs: [m[1]] }
   if (/^Enrolled in a co-operative program$/i.test(full))
     return { kind: 'program', mode: 'in', programs: ['Co-operative'] }
+  if (/^Enrolled in/i.test(full)) {
+    // Free-text enrolment rules. Only phrases that clearly admit Faculty of Mathematics
+    // honours students map to a token BCS students hold; the rest name other programs.
+    const rest = full.replace(/^Enrolled in:?\s*/i, '')
+    if (/undergraduate degree program/i.test(rest)) return { kind: 'program', mode: 'in', programs: ['Faculty of Mathematics'] }
+    if (/Faculties of [^.]*Mathematics|Faculty of Mathematics/i.test(rest))
+      return { kind: 'program', mode: 'in', programs: ['Faculty of Mathematics'] }
+    if (/^Honours (Faculty of )?Mathematics\b/i.test(rest) || /\bHonours Mathematics program\b/i.test(rest))
+      return { kind: 'program', mode: 'in', programs: ['Honours Mathematics'] }
+    return { kind: 'program', mode: 'in', programs: [rest] }
+  }
   if ((m = full.match(/^Earned at least (\d+(?:\.\d+)?) units? from ([A-Z]{2,})(?: (\d)00 - (\d)99)?$/)))
     return {
       kind: 'units',
@@ -136,9 +147,15 @@ function parseItem(li: HTMLElement): Requisite | null {
   return text ? { kind: 'text', raw: text } : null
 }
 
-function parseList(ul: HTMLElement): Requisite[] {
+/** List items, looking through the `<div><span class="rules_groupHeader…"/><li>` wrappers of nested groups. */
+function listItems(ul: HTMLElement): HTMLElement[] {
   return ul.childNodes
-    .filter((n): n is HTMLElement => n.nodeType === NodeType.ELEMENT_NODE && (n as HTMLElement).tagName === 'LI')
+    .filter((n): n is HTMLElement => n.nodeType === NodeType.ELEMENT_NODE)
+    .flatMap((el) => (el.tagName === 'LI' ? [el] : el.tagName === 'DIV' ? listItems(el) : []))
+}
+
+function parseList(ul: HTMLElement): Requisite[] {
+  return listItems(ul)
     .map(parseItem)
     .filter((r): r is Requisite => r !== null)
 }

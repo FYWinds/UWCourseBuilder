@@ -108,7 +108,7 @@ export function auditPlan(
 
   const coop = SEQUENCES[plan.sequence].coop
   const fullTime = terms.filter((t) => {
-    if (t.kind !== 'study') return false
+    if (t.kind !== 'study' || (scope === 'taken' && t.index > plan.completedThrough)) return false
     const codes = plan.placements[t.id] ?? []
     const units = codes.reduce((s, code) => s + (idx.byCode.get(code)?.units ?? 0), 0)
     return codes.length >= 3 && units >= 1.5

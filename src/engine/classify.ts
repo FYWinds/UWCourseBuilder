@@ -83,7 +83,7 @@ export function classify(plan: Plan, audit: AuditResult, idx: CatalogIndex): Cla
       byCode.set(c.code, { status: 'blocked', slots: [], reasons: [reason], prereqFor: [] })
       continue
     }
-    byCode.set(c.code, { status: countsTowardDegree(c) ? 'free' : 'blocked', slots: [], reasons: countsTowardDegree(c) ? [] : ['Does not count toward degree units'], prereqFor: [] })
+    byCode.set(c.code, { status: 'free', slots: [], reasons: [], prereqFor: [] })
     available.push(c.code)
   }
 
@@ -148,6 +148,15 @@ export function classify(plan: Plan, audit: AuditResult, idx: CatalogIndex): Cla
     }
   }
 
+  // PD/COOP/WKRPT and zero-unit courses only matter when a requirement (co-op PD) uses them.
+  for (const code of available) {
+    const cl = byCode.get(code)
+    const course = idx.byCode.get(code)
+    if (cl?.status === 'free' && course && !countsTowardDegree(course)) {
+      cl.status = 'blocked'
+      cl.reasons.push('Does not count toward degree units')
+    }
+  }
   promotePrereqs(byCode, idx)
   return { byCode, impossible }
 }

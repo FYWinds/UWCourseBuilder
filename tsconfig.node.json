@@ -6,8 +6,11 @@
     "types": ["node"],
     "skipLibCheck": true,
 
-    /* Bundler mode */
-    "module": "nodenext",
+    /* Bundler mode (scripts run through tsx and import src/ via the @ alias) */
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "paths": { "@/*": ["./src/*"] },
+    "strict": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",

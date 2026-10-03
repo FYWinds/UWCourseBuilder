@@ -85,7 +85,7 @@ export function progress(label: string) {
   let last = 0
   return (done: number, total: number) => {
     const now = Date.now()
-    if (done === total || now - last > 2000) {
+    if (done === total || now - last > 15_000) {
       last = now
       console.log(`  ${label}: ${done}/${total}`)
     }

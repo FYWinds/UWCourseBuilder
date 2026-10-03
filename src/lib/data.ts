@@ -1,4 +1,4 @@
-import { use, useDeferredValue, useMemo } from 'react'
+import { use, useDeferredValue } from 'react'
 import type { Plan } from '@/domain/plan'
 import type { Catalog } from '@/domain/types'
 import {
@@ -41,16 +41,14 @@ export interface Analysis {
   validation: PlanValidation
 }
 
-/**
- * Everything derived from the plan. Recomputed on a deferred copy of the plan so
- * drag-and-drop stays responsive while classification (~60 ms) runs.
- */
-export function useAnalysis(): Analysis {
-  const idx = useCatalog()
-  const plan = useDeferredValue(usePlanStore((s) => s.plan))
-  return useMemo(() => {
+/** One analysis per plan object: every component reading the same plan shares it. */
+const analysisCache = new WeakMap<Plan, Analysis>()
+
+function analyze(plan: Plan, idx: CatalogIndex): Analysis {
+  let analysis = analysisCache.get(plan)
+  if (!analysis) {
     const audit = auditPlan(plan, idx)
-    return {
+    analysis = {
       idx,
       plan,
       audit,
@@ -58,5 +56,17 @@ export function useAnalysis(): Analysis {
       classification: classify(plan, audit, idx),
       validation: validatePlan(plan, idx),
     }
-  }, [idx, plan])
+    analysisCache.set(plan, analysis)
+  }
+  return analysis
+}
+
+/**
+ * Everything derived from the plan. Computed on a deferred copy of the plan so
+ * drag-and-drop stays responsive while classification (~60 ms) runs.
+ */
+export function useAnalysis(): Analysis {
+  const idx = useCatalog()
+  const plan = useDeferredValue(usePlanStore((s) => s.plan))
+  return analyze(plan, idx)
 }

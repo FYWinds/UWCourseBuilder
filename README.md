@@ -1,32 +1,49 @@
-# React + TypeScript + Vite
+# UW Course Builder
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Static planner for the University of Waterloo **Bachelor of Computer Science (2026/27 calendar)** and its eight CS
+specializations. It audits a plan against the degree requirements, classifies every course as
+*must take / required (one of) / counts toward / free elective / blocked*, and validates a term-by-term plan
+(co-op work terms included).
 
-Currently, two official plugins are available:
+Design and requirement research: [`docs/PLAN.md`](docs/PLAN.md), [`docs/research/bcs-calendar-2026-27.md`](docs/research/bcs-calendar-2026-27.md).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
 
-## React Compiler
+Vite · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui (Radix) · TanStack Router/Table/Virtual · zustand ·
+dnd-kit · React Flow + ELK (web worker) · Vitest · Playwright.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Data
 
-## Expanding the Oxlint configuration
+| Source | Used for | Key |
+|---|---|---|
+| Kuali catalog API behind the official Undergraduate Calendar (`uwaterloocm.kuali.co`, catalog `67e557ed6ed2fe2bd3a38956`) | courses, prerequisites/antirequisites, program pages | none |
+| [UW Open Data API v3](https://openapi.data.uwaterloo.ca/api-docs/) | offering history (F/W/S), faculty of each course, online sections | `UW_API_KEY` |
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+The snapshot lives in `public/data/catalog.json` (committed). Requirements are hand-encoded in
+`src/requirements/` and cross-checked against the calendar pages by `pnpm data:validate`.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Commands
+
+```sh
+pnpm install
+pnpm dev              # http://localhost:5173
+pnpm test             # parser + engine unit tests
+pnpm build            # vite build + type check
+pnpm test:e2e         # Playwright smoke test against the production build
+
+# Refresh the data snapshot (raw responses cached in data/raw/)
+echo UW_API_KEY=... > .env.local
+pnpm data             # kuali → opendata → build-dataset → validate
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Deploy
+
+`.github/workflows/deploy.yml` builds and deploys to GitHub Pages on push to `main`, and refreshes the data
+weekly. Add the Open Data key as the repository secret `UW_API_KEY`; it is only used at build time and never
+shipped to the browser. The app uses hash routing, so any static host works.
+
+## Caveats
+
+Unofficial planning aid — the Undergraduate Calendar and CS advisors take precedence. Grades, averages and
+free-text requisites are flagged for manual checking, not evaluated. Sharing one course between two
+specializations is allowed by the engine but not verified against the calendar.

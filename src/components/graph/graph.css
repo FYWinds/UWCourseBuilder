@@ -1,0 +1,44 @@
+/* Re-skin React Flow with the app's design tokens (light and dark follow automatically). */
+.uwcb-graph.react-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke: var(--muted-foreground);
+  --xy-edge-stroke-selected: var(--primary);
+  --xy-minimap-background-color: var(--card);
+  --xy-minimap-mask-background-color: color-mix(in oklab, var(--foreground) 8%, transparent);
+  --xy-minimap-mask-stroke-color: var(--border);
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--secondary);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-color-hover: var(--foreground);
+  --xy-controls-button-border-color: var(--border);
+  --xy-controls-box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 8%, transparent);
+  --xy-attribution-background-color: transparent;
+  font-family: inherit;
+}
+
+.uwcb-graph .react-flow__minimap,
+.uwcb-graph .react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.uwcb-graph .react-flow__attribution a {
+  color: var(--muted-foreground);
+}
+
+/* Edges are read-only; keep the anchors but hide the dots. */
+.uwcb-graph .react-flow__handle {
+  min-width: 0;
+  min-height: 0;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+}
+
+.uwcb-graph .react-flow__node:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  border-radius: calc(var(--radius) + 2px);
+}

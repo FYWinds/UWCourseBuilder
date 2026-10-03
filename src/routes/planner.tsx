@@ -1,7 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { Planner } from '@/components/planner/Planner'
 
-export const Route = createFileRoute('/planner')({ component: PlannerPage })
-
-function PlannerPage() {
-  return <h1 className="text-3xl">planner</h1>
-}
+export const Route = createFileRoute('/planner')({ component: Planner })

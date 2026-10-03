@@ -1,0 +1,67 @@
+name: Refresh data and deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly refresh of calendar + offerings (Mondays 09:00 UTC).
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      refresh_data:
+        description: Re-fetch Kuali + Open Data before building
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Refresh data snapshot
+        if: github.event_name == 'schedule' || inputs.refresh_data
+        env:
+          UW_API_KEY: ${{ secrets.UW_API_KEY }}
+        run: pnpm data
+
+      - name: Commit refreshed snapshot
+        if: github.event_name == 'schedule' || inputs.refresh_data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/catalog.json
+          git diff --cached --quiet || git commit -m "chore: refresh course data snapshot" && git push
+
+      - run: pnpm test
+      - run: pnpm build
+      - name: Smoke test
+        run: pnpm exec playwright install --with-deps chromium && pnpm test:e2e
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

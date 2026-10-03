@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CourseCode } from '@/domain/types'
 import type { CatalogIndex, ClassifyResult, ProgramAudit, SlotAllocation } from '@/engine'
+import { depthHint } from '@/components/overview/summary'
 import { cn } from '@/lib/utils'
 import { CourseChip } from './CourseChip'
 import { LinkedText } from './LinkedText'
@@ -163,7 +164,7 @@ export function ProgramCard({ audit: pa, takenAudit, placedStatus, classificatio
           )
         })}
 
-        {(allocation.floors.length > 0 || totals.length > 0) && (
+        {(allocation.floors.length > 0 || totals.length > 0 || allocation.depth) && (
           <section className="break-inside-avoid">
             <h3 className="border-b pb-1 text-base font-semibold">Overall constraints</h3>
             <ul className="divide-y divide-dashed">
@@ -181,6 +182,30 @@ export function ProgramCard({ audit: pa, takenAudit, placedStatus, classificatio
                   />
                 )
               })}
+              {allocation.depth && (
+                <Row
+                  ok={allocation.depth.satisfied}
+                  label={allocation.depth.rule.label}
+                  title={allocation.depth.rule.label}
+                  progress={
+                    <Progress
+                      taken={Math.min(takenAudit?.allocation.depth?.units ?? 0, allocation.depth.units)}
+                      total={allocation.depth.units}
+                      need={allocation.depth.rule.units}
+                      label={allocation.depth.rule.label}
+                    />
+                  }
+                >
+                  {allocation.depth.courses.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {allocation.depth.courses.map((code) => (
+                        <CourseChip key={code} code={code} status={placedStatus.get(code) ?? 'planned'} />
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">{depthHint(allocation.depth)}</p>
+                </Row>
+              )}
               {totals.map((t) => {
                 const takenTotal = takenAudit?.totals.find((x) => x.id === t.id)
                 return (

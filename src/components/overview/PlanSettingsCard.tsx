@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { SEQUENCES, type SequenceId } from '@/domain/plan'
+import { BREADTH_RULES, type BreadthRule, SEQUENCES, type SequenceId, resolveBreadthRule } from '@/domain/plan'
 import { buildTerms, termName } from '@/engine'
 import { SPECS, SPEC_IDS } from '@/requirements/specs'
 import { usePlanStore } from '@/store/plan'
@@ -14,6 +14,7 @@ import { TranscriptImport } from './TranscriptImport'
 
 /** Fall terms 2023 … 2027 (term codes 1239 … 1279). */
 const START_TERMS = [123, 124, 125, 126, 127].map((y) => `${y}9`)
+const AUTO = 'auto'
 
 function Field({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   return (
@@ -33,6 +34,8 @@ export function PlanSettingsCard() {
   const setCompletedThrough = usePlanStore((s) => s.setCompletedThrough)
   const setWtLimit = usePlanStore((s) => s.setWtLimit)
   const toggleSpec = usePlanStore((s) => s.toggleSpec)
+  const setBreadthRule = usePlanStore((s) => s.setBreadthRule)
+  const rule = resolveBreadthRule(plan)
   const terms = buildTerms(plan)
   const coop = SEQUENCES[plan.sequence].coop
   const completed = Math.min(plan.completedThrough, terms.length - 1)
@@ -75,6 +78,28 @@ export function PlanSettingsCard() {
               ))}
             </SelectContent>
           </Select>
+        </Field>
+
+        <Field id="breadth-rule" label="Non-math elective rule">
+          <Select
+            value={plan.breadthRule ?? AUTO}
+            onValueChange={(v) => setBreadthRule(v === AUTO ? undefined : (v as BreadthRule))}
+          >
+            <SelectTrigger id="breadth-rule" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={AUTO}>Auto from 1A term — {BREADTH_RULES[rule].label}</SelectItem>
+              {(Object.keys(BREADTH_RULES) as BreadthRule[]).map((id) => (
+                <SelectItem key={id} value={id}>
+                  {BREADTH_RULES[id].label} ({BREADTH_RULES[id].calendars})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Your calendar is the one in effect when you entered Math; a later one needs a Plan Modification Form.
+          </p>
         </Field>
 
         <Field id="completed-through" label="Completed through">

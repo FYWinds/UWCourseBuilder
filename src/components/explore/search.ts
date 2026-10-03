@@ -1,3 +1,4 @@
+import type { BreadthRule } from '@/domain/plan'
 import type { Course, CourseCode, Faculty, Season } from '@/domain/types'
 import { type AuditResult, type CatalogIndex, type ClassifyResult, type CourseStatus, STATUS_ORDER, expandSet } from '@/engine'
 import { FACULTY_LABEL, SEASONS } from '@/components/course/labels'
@@ -59,13 +60,29 @@ export function validateExploreSearch(raw: Record<string, unknown>): ExploreSear
   return out
 }
 
-export const PRESETS: { id: string; label: string; search: Partial<ExploreSearch> }[] = [
+type Preset = { id: string; label: string; search: Partial<ExploreSearch> }
+
+const COMMON_PRESETS: Preset[] = [
   { id: 'must', label: 'Must & required', search: { status: ['must', 'required'] } },
   { id: 'counts', label: 'Counts toward a requirement', search: { status: ['must', 'required', 'counts'] } },
   { id: 'online', label: 'Online (for work terms)', search: { onlineOnly: true, status: ['must', 'required', 'counts', 'free'] } },
-  { id: 'breadthA', label: 'Breadth: Arts', search: { slot: 'core:breadthA' } },
-  { id: 'breadthB', label: 'Breadth: Env/Health/Science', search: { slot: 'core:breadthB' } },
 ]
+
+const BREADTH_PRESETS: Record<BreadthRule, Preset[]> = {
+  elective: [
+    { id: 'breadthA', label: 'Breadth: Arts', search: { slot: 'core:breadthA' } },
+    { id: 'breadthB', label: 'Breadth: Env/Health/Science', search: { slot: 'core:breadthB' } },
+  ],
+  'breadth-depth': [
+    { id: 'humanities', label: 'Breadth: Humanities', search: { slot: 'breadth:humanities' } },
+    { id: 'social', label: 'Breadth: Social Sciences', search: { slot: 'breadth:socialSciences' } },
+    { id: 'depth', label: 'Depth', search: { slot: 'breadth:depth' } },
+  ],
+}
+
+export function presetsFor(rule: BreadthRule): Preset[] {
+  return [...COMMON_PRESETS, ...BREADTH_PRESETS[rule]]
+}
 
 /** Whether the current filters are exactly the preset's (search text aside). */
 export function presetActive(search: ExploreSearch, preset: Partial<ExploreSearch>): boolean {
@@ -136,7 +153,8 @@ export function slotLabel(slot: string, audit: AuditResult): string | null {
   if (!pa) return null
   const label =
     pa.allocation.slots.find((s) => s.slot.id === slotId)?.slot.label ??
-    pa.allocation.floors.find((f) => f.floor.id === slotId)?.floor.label
+    pa.allocation.floors.find((f) => f.floor.id === slotId)?.floor.label ??
+    (pa.allocation.depth?.rule.id === slotId ? 'Depth' : undefined)
   return label ? `${pa.program.shortName} · ${label}` : null
 }
 

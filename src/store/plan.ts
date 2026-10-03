@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Plan, SequenceId } from '@/domain/plan'
+import type { BreadthRule, Plan, SequenceId } from '@/domain/plan'
 import type { SpecId } from '@/domain/requirements'
 import type { CourseCode } from '@/domain/types'
 
@@ -26,6 +26,8 @@ interface PlanStore {
   toggleSpec: (spec: SpecId) => void
   setWtLimit: (limit: 1 | 2) => void
   setCompletedThrough: (index: number) => void
+  /** `undefined` = follow the 1A term. */
+  setBreadthRule: (rule: BreadthRule | undefined) => void
   /** Adds a course to a term; a course lives in at most one term, so it moves if present. */
   placeCourse: (termId: string, code: CourseCode) => void
   removeCourse: (code: CourseCode) => void
@@ -56,6 +58,11 @@ export const usePlanStore = create<PlanStore>()(
         })),
       setWtLimit: (wtLimit) => set((s) => ({ plan: { ...s.plan, wtLimit } })),
       setCompletedThrough: (completedThrough) => set((s) => ({ plan: { ...s.plan, completedThrough } })),
+      setBreadthRule: (breadthRule) =>
+        set((s) => {
+          const { breadthRule: _previous, ...rest } = s.plan
+          return { plan: breadthRule ? { ...rest, breadthRule } : rest }
+        }),
       placeCourse: (termId, code) =>
         set((s) => {
           const placements = withoutCourse(s.plan.placements, code)

@@ -64,6 +64,27 @@ export interface Plan {
   placements: Record<string, CourseCode[]>
   /** Index of the last completed term; terms after it are planned. -1 = none. */
   completedThrough: number
+  /** Non-math elective rule; unset = chosen from the 1A term (see `resolveBreadthRule`). */
+  breadthRule?: BreadthRule
 }
 
 export const TRANSFER_TERM_ID = 'transfer'
+
+/**
+ * 'breadth-depth': Humanities / Social / Pure / Pure-or-Applied Science breadth plus depth
+ * (2025/26 and earlier calendars). 'elective': Elective Requirement by faculty (2026/27).
+ */
+export type BreadthRule = 'breadth-depth' | 'elective'
+
+export const BREADTH_RULES: Record<BreadthRule, { label: string; calendars: string }> = {
+  'breadth-depth': { label: 'Breadth & Depth', calendars: '2025/26 and earlier' },
+  elective: { label: 'Elective Requirement', calendars: '2026/27' },
+}
+
+/** First 1A term under the 2026/27 calendar (Fall 2026). */
+const ELECTIVE_RULE_FROM = '1269'
+
+/** Students default to the calendar in effect when they entered the Faculty of Mathematics. */
+export function resolveBreadthRule(plan: Pick<Plan, 'breadthRule' | 'startTerm'>): BreadthRule {
+  return plan.breadthRule ?? (plan.startTerm < ELECTIVE_RULE_FROM ? 'breadth-depth' : 'elective')
+}

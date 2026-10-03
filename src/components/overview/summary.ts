@@ -1,5 +1,5 @@
 import { formatUnits } from '@/components/audit/units'
-import type { AuditResult, ProgramAudit } from '@/engine'
+import type { AuditResult, DepthResult, ProgramAudit } from '@/engine'
 import type { Analysis } from '@/lib/data'
 
 export interface SummaryRow {
@@ -30,6 +30,12 @@ function sectionProgress(pa: ProgramAudit | undefined, sectionId: string) {
 function programProgress(pa: ProgramAudit | undefined) {
   const need = pa?.allocation.slots.reduce((s, x) => s + x.slot.units, 0) ?? 0
   return { have: need - (pa?.allocation.deficit ?? 0), need, satisfied: pa ? pa.allocation.satisfied : false }
+}
+
+export function depthHint(depth: DepthResult): string {
+  if (depth.satisfied) return `Depth: ${depth.subject} (${depth.via === 'chain' ? 'prerequisite chain' : '300-level course'})`
+  if (!depth.subject) return 'Depth: no subject started yet'
+  return `Depth: ${depth.subject} ${formatUnits(depth.units)} / ${formatUnits(depth.rule.units)} — needs a 300-level course or a prerequisite chain of three`
 }
 
 const CORE_SECTIONS: { id: string; label: string }[] = [
@@ -96,6 +102,7 @@ export function summaryRows({ audit, takenAudit }: Analysis): SummaryRow[] {
     if (pa.program.id === 'core') continue
     const all = programProgress(pa)
     const taken = programProgress(takenAudit.programs.find((p) => p.program.id === pa.program.id))
+    const depth = pa.allocation.depth
     rows.push({
       id: pa.program.id,
       label: pa.program.kind === 'spec' ? `${pa.program.shortName} spec.` : pa.program.shortName,
@@ -104,6 +111,7 @@ export function summaryRows({ audit, takenAudit }: Analysis): SummaryRow[] {
       total: all.have,
       satisfied: all.satisfied,
       unit: 'units',
+      ...(depth && { hint: depthHint(depth) }),
     })
   }
   return rows
@@ -116,6 +124,7 @@ export function remainingRequirements(audit: AuditResult): number {
       n +
       pa.allocation.slots.filter((s) => !s.satisfied).length +
       pa.allocation.floors.filter((f) => !f.satisfied).length +
+      (pa.allocation.depth && !pa.allocation.depth.satisfied ? 1 : 0) +
       pa.totals.filter((t) => !t.satisfied).length,
     0,
   )

@@ -1,20 +1,50 @@
 /**
- * Bachelor of Computer Science (Honours), 2026/27 calendar.
- * Sources: Kuali programs r1y1WO5ka (degree) and SJPJkCAih (major);
- * CS checklist 2026-present-bcs-final1.pdf. Raw program pages: data/raw/kuali/programs (pnpm data:kuali).
+ * Bachelor of Computer Science (Honours). Course requirements follow the 2026/27
+ * calendar; the non-math elective rule can be the 2026/27 Elective Requirement or the
+ * Breadth & Depth requirement of the 2025/26 and earlier calendars.
+ * Sources: Kuali programs r1y1WO5ka (degree) and SJPJkCAih (major); CS checklists
+ * 2026-present-bcs-final1.pdf and 2025-2026-bcs.pdf; CS "Breadth and depth requirements"
+ * page (subject lists current as of August 2025). Raw program pages:
+ * data/raw/kuali/programs (pnpm data:kuali).
  */
-import type { CourseSet, Program } from '@/domain/requirements'
+import type { BreadthRule } from '@/domain/plan'
+import type { CourseSet, Program, Section } from '@/domain/requirements'
+import type { CourseCode } from '@/domain/types'
 import { CALENDAR_BASE, CHECKLIST_BASE, oneOf, pick } from './helpers'
 
-/**
- * Communication List 1. ENGL 119 is listed under List 2 in the 2026/27 calendar,
- * but the CS checklist moves it to List 1 starting 2026/27.
- */
-export const COMM_LIST_1 = ['COMMST100', 'COMMST223', 'EMLS101', 'EMLS102', 'EMLS129', 'ENGL109', 'ENGL129', 'ENGL119']
-export const COMM_LIST_2 = [
+const COMM_LIST_1_BASE = ['COMMST100', 'COMMST223', 'EMLS101', 'EMLS102', 'EMLS129', 'ENGL109', 'ENGL129']
+const COMM_LIST_2_BASE = [
   'COMMST225', 'COMMST227', 'COMMST228', 'EMLS103', 'EMLS104', 'EMLS110', 'ENGL101B',
   'ENGL108B', 'ENGL108D', 'ENGL208B', 'ENGL209', 'ENGL210E', 'ENGL210F', 'ENGL378',
 ]
+
+/**
+ * Communication lists. ENGL 119 is a List 2 course up to 2025/26; the CS checklist moves
+ * it to List 1 from 2026/27 (the calendar catches up in 2027/28).
+ */
+export function commLists(rule: BreadthRule): { list1: CourseCode[]; list2: CourseCode[] } {
+  return rule === 'elective'
+    ? { list1: [...COMM_LIST_1_BASE, 'ENGL119'], list2: COMM_LIST_2_BASE }
+    : { list1: COMM_LIST_1_BASE, list2: [...COMM_LIST_2_BASE, 'ENGL119'] }
+}
+
+function communicationSection(rule: BreadthRule): Section {
+  const { list1, list2 } = commLists(rule)
+  return {
+    id: 'communication',
+    label: 'Undergraduate Communication Requirement',
+    slots: [
+      pick('comm1', 'Communication List 1', 1, { list: list1 }, {
+        kind: 'required',
+        note:
+          rule === 'elective'
+            ? 'Needs at least 60% and should be completed before 2A. ENGL 119 counts as List 1 from 2026/27 (CS checklist).'
+            : 'Needs at least 60% and should be completed before 2A.',
+      }),
+      pick('comm2', 'Communication List 1 or List 2', 1, { list: [...list1, ...list2] }, { kind: 'required' }),
+    ],
+  }
+}
 
 /** Subjects the calendar groups with Arts for the breadth (elective) requirement. */
 export const BREADTH_EXTRA_SUBJECTS = ['BET', 'BUS', 'COMM', 'STV']
@@ -98,19 +128,7 @@ export const bcsCore: Program = {
         ),
       ],
     },
-    {
-      id: 'communication',
-      label: 'Undergraduate Communication Requirement',
-      slots: [
-        pick('comm1', 'Communication List 1', 1, { list: COMM_LIST_1 }, {
-          kind: 'required',
-          note: 'Needs at least 60% and should be completed before 2A. ENGL 119 counts as List 1 from 2026/27 (CS checklist).',
-        }),
-        pick('comm2', 'Communication List 1 or List 2', 1, { list: [...COMM_LIST_1, ...COMM_LIST_2] }, {
-          kind: 'required',
-        }),
-      ],
-    },
+    communicationSection('elective'),
     {
       id: 'breadth',
       label: 'Elective (breadth) requirement — 4.0 units',
@@ -142,6 +160,74 @@ export const bcsCore: Program = {
     'No more than 2.0 units of failed courses and 5.0 units of unusable attempts (not checked here).',
     'Seven (regular) or eight (co-op) terms with at least three courses totalling 1.5 units.',
   ],
+}
+
+/** Breadth & Depth subject lists (CS breadth and depth page, current as of August 2025). */
+const HUMANITIES = [
+  'CHINA', 'CLAS', 'CMW', 'COMMST', 'CROAT', 'DAC', 'DUTCH', 'EASIA', 'ENGL', 'FINE', 'FR', 'GER', 'GRK',
+  'HIST', 'HUMSC', 'ITAL', 'ITALST', 'JAPAN', 'JS', 'KOREA', 'LAT', 'MEDVL', 'MUSIC', 'PHIL', 'PORT', 'RCS',
+  'REES', 'RUSS', 'SI', 'SPAN', 'THPERF', 'VCULT',
+]
+const SOCIAL_SCIENCES = [
+  'AFM', 'ANTH', 'APPLS', 'ARBUS', 'BET', 'BUS', 'COMM', 'ECON', 'ENBUS', 'GEOG', 'GSJ', 'HRM', 'INDEV',
+  'INDG', 'INTST', 'LS', 'MSE', 'PACS', 'PSCI', 'PSYCH', 'REC', 'SDS', 'SRF', 'SOC', 'SOCWK', 'STV',
+]
+const PURE_SCIENCES = ['BIOL', 'CHEM', 'EARTH', 'PHYS', 'SCI']
+const PURE_APPLIED_SCIENCES = [...PURE_SCIENCES, 'ENVS', 'ERS', 'HEALTH', 'KIN', 'MNS', 'PLAN']
+
+/** Course requirements under the 2025/26-and-earlier rule: no Elective Requirement section. */
+export const bcsCoreBreadthDepth: Program = {
+  ...bcsCore,
+  checklistUrl: `${CHECKLIST_BASE}/2025-2026-bcs.pdf`,
+  sections: bcsCore.sections
+    .filter((s) => s.id !== 'breadth')
+    .map((s) => (s.id === 'communication' ? communicationSection('breadth-depth') : s)),
+  levelFloors: [],
+}
+
+/**
+ * Breadth & Depth as its own allocation group: a List 2 COMMST/ENGL course may count
+ * for both the Communication Requirement and Humanities, while List 1 courses never
+ * count as Humanities — so sharing with the core group is exactly the calendar rule.
+ */
+export const breadthDepthProgram: Program = {
+  id: 'breadth',
+  kind: 'breadth',
+  name: 'Breadth and Depth requirement (2025/26 and earlier calendars)',
+  shortName: 'Breadth & depth',
+  calendarUrl: 'https://uwaterloo.ca/computer-science/current-undergraduate-students/majors/breadth-and-depth-requirements',
+  checklistUrl: `${CHECKLIST_BASE}/2025-2026-bcs.pdf`,
+  sections: [
+    {
+      id: 'breadth',
+      label: 'Breadth — 3.0 units',
+      slots: [
+        pick('humanities', 'Humanities', 2, notMathCrossListed({ minus: [{ subject: HUMANITIES }, { list: COMM_LIST_1_BASE }] }), {
+          note: 'Communication List 1 courses do not count; COMMST/ENGL courses only on List 2 may count here and for communication.',
+        }),
+        pick('socialSciences', 'Social Sciences', 2, notMathCrossListed({ subject: SOCIAL_SCIENCES })),
+        pick('pureSciences', 'Pure Sciences', 1, notMathCrossListed({ subject: PURE_SCIENCES })),
+        pick('pureAppliedSciences', 'Pure or Applied Sciences', 1, notMathCrossListed({ subject: PURE_APPLIED_SCIENCES })),
+      ],
+    },
+  ],
+  depth: {
+    id: 'depth',
+    label: 'Depth: 1.5 units in one subject, with 0.5 unit at the 300-level or a prerequisite chain of three',
+    from: NON_MATH,
+    units: 1.5,
+    upperLevel: 300,
+    chainLength: 3,
+  },
+  notes: [
+    'No course can satisfy more than one breadth category; breadth courses may also be used for depth.',
+    'Courses with substantial math or computer science content do not count, whatever their subject — check with a CS advisor.',
+  ],
+}
+
+/** Core programs for a non-math elective rule. */
+export function corePrograms(rule: BreadthRule): Program[] {
+  return rule === 'elective' ? [bcsCore] : [bcsCoreBreadthDepth, breadthDepthProgram]
 }
 
 export const coopProgram: Program = {

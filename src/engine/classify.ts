@@ -12,9 +12,9 @@
 import type { Plan } from '@/domain/plan'
 import type { Slot } from '@/domain/requirements'
 import type { Course, CourseCode, Requisite } from '@/domain/types'
-import { effectiveSlots, feasible, solveFlow } from './allocate'
+import { type DepthResult, effectiveSlots, feasible, solveFlow } from './allocate'
 import { type AuditResult, activePrograms } from './audit'
-import { type CatalogIndex, countsTowardDegree, expandSet } from './catalog'
+import { type CatalogIndex, collectCourses, countsTowardDegree, expandSet, numericPart } from './catalog'
 import { programAllows, studentPrograms } from './requisites'
 
 export type CourseStatus = 'taken' | 'planned' | 'blocked' | 'must' | 'required' | 'counts' | 'free'
@@ -94,6 +94,8 @@ export function classify(plan: Plan, audit: AuditResult, idx: CatalogIndex): Cla
     const program = pa.program
     const slots = effectiveSlots(program, program.kind === 'core' ? overrides : [])
     const unmet = pa.allocation.slots.filter((s) => !s.satisfied).map((s) => s.slot.id)
+    const depth = pa.allocation.depth
+    if (depth && !depth.satisfied) markDepthCandidates(depth, program.id, program.shortName, usable, availableSet, byCode, idx)
     if (unmet.length === 0 && pa.allocation.floors.every((f) => f.satisfied)) continue
 
     const ref = (slot: Slot): SlotRef => ({
@@ -159,6 +161,38 @@ export function classify(plan: Plan, audit: AuditResult, idx: CatalogIndex): Cla
   }
   promotePrereqs(byCode, idx)
   return { byCode, impossible }
+}
+
+/**
+ * Unmet depth: in every subject the plan already has eligible courses, a course
+ * counts if it is at the upper level or extends a prerequisite chain from them.
+ */
+function markDepthCandidates(
+  depth: DepthResult,
+  programId: string,
+  programName: string,
+  usable: CourseCode[],
+  available: Set<CourseCode>,
+  byCode: Map<CourseCode, Classification>,
+  idx: CatalogIndex,
+) {
+  const pool = expandSet(depth.rule.from, idx)
+  const started = new Map<string, Set<CourseCode>>()
+  for (const code of usable) {
+    const c = idx.byCode.get(code)
+    if (!c || !pool.has(code) || !countsTowardDegree(c)) continue
+    started.set(c.subject, (started.get(c.subject) ?? new Set()).add(code))
+  }
+  for (const c of idx.courses) {
+    const have = started.get(c.subject)
+    const cl = byCode.get(c.code)
+    if (!have || !cl || !available.has(c.code) || !pool.has(c.code)) continue
+    const upper = numericPart(c.number) >= depth.rule.upperLevel
+    const extendsChain = [...collectCourses(c.prereq, new Set())].some((p) => have.has(p))
+    if (!upper && !extendsChain) continue
+    cl.slots.push({ programId, programName, slotId: depth.rule.id, slotLabel: `Depth in ${c.subject}` })
+    if (cl.status === 'free') cl.status = 'counts'
+  }
 }
 
 /**

@@ -35,6 +35,7 @@ function plan(overrides: Partial<Plan> = {}): Plan {
     wtLimit: 1,
     placements: structuredClone(FULL),
     completedThrough: -1,
+    breadthRule: 'elective',
     ...overrides,
   }
 }
@@ -106,6 +107,67 @@ describe('audit', () => {
     const ai = auditPlan(p, idx).programs.find((x) => x.program.id === 'ai')!
     expect(ai.allocation.slots.find((s) => s.slot.id === 'ai-list-eng')?.satisfied).toBe(false)
     expect(ai.allocation.slots.find((s) => s.slot.id === 'ai-list-math')?.satisfied).toBe(true)
+  })
+})
+
+describe('breadth & depth rule (2025/26 and earlier)', () => {
+  const legacy = (overrides: Partial<Plan> = {}) => plan({ breadthRule: 'breadth-depth', ...overrides })
+  const breadth = (p: Plan) => auditPlan(p, idx).programs.find((x) => x.program.id === 'breadth')!
+  const legacySlot = (p: Plan, id: string) => breadth(p).allocation.slots.find((s) => s.slot.id === id)!
+
+  it('defaults to breadth & depth for 1A terms before Fall 2026', () => {
+    const ids = (p: Plan) => auditPlan(p, idx).programs.map((x) => x.program.id)
+    expect(ids(plan({ breadthRule: undefined, startTerm: '1239' }))).toContain('breadth')
+    expect(ids(plan({ breadthRule: undefined, startTerm: '1269' }))).not.toContain('breadth')
+    expect(ids(plan({ breadthRule: 'elective', startTerm: '1239' }))).not.toContain('breadth')
+  })
+
+  it('fills the four breadth categories by subject and drops the elective section', () => {
+    const p = legacy()
+    expect(breadth(p).allocation.slots.every((s) => s.satisfied)).toBe(true)
+    expect(core(p).allocation.slots.some((s) => s.slot.id.startsWith('breadth'))).toBe(false)
+    const sciences = ['pureSciences', 'pureAppliedSciences'].flatMap((id) => legacySlot(p, id).courses)
+    expect(sciences.sort()).toEqual(['EARTH121', 'EARTH122'])
+  })
+
+  it('ignores PD and other non-degree courses for depth', () => {
+    const p = legacy({ placements: { t0: ['PD1'], t2: ['PD11'], t4: ['PD10'] } })
+    expect(breadth(p).allocation.depth).toMatchObject({ satisfied: false, units: 0 })
+  })
+
+  it('keeps List 1 courses out of Humanities but lets a List 2 ENGL course count twice', () => {
+    const p = legacy({ placements: { t0: ['ENGL109', 'COMMST223'] } })
+    expect(legacySlot(p, 'humanities').filled).toBe(0)
+    const withList2 = legacy({ placements: { t0: ['ENGL109', 'ENGL119'] } })
+    expect(slot(withList2, 'comm2').courses).toEqual(['ENGL119'])
+    expect(legacySlot(withList2, 'humanities').courses).toEqual(['ENGL119'])
+    // Under the 2026/27 rule ENGL 119 is a List 1 course instead.
+    expect(slot(plan({ placements: { t0: ['ENGL109', 'ENGL119'] } }), 'comm1').satisfied).toBe(true)
+  })
+
+  it('requires depth: 1.5 units in one subject with a 300-level course or a chain of three', () => {
+    const p = legacy()
+    expect(breadth(p).allocation.depth?.satisfied).toBe(false)
+    expect(breadth(p).allocation.satisfied).toBe(false)
+
+    const upper = legacy()
+    upper.placements.t13 = [...upper.placements.t13, 'PSYCH312']
+    expect(breadth(upper).allocation.depth).toMatchObject({ satisfied: true, subject: 'PSYCH', via: 'upper' })
+
+    const chain = legacy({ placements: { t0: ['PHYS111'], t1: ['PHYS112'], t3: ['PHYS256'] } })
+    expect(breadth(chain).allocation.depth).toMatchObject({
+      satisfied: true,
+      subject: 'PHYS',
+      via: 'chain',
+      courses: ['PHYS111', 'PHYS112', 'PHYS256'],
+    })
+  })
+
+  it('marks courses that advance depth in subjects already started', () => {
+    const p = legacy({ placements: { t0: ['PHYS111'], t1: ['PHYS112'] } })
+    const r = classify(p, auditPlan(p, idx), idx).byCode
+    expect(r.get('PHYS256')?.slots.some((s) => s.slotId === 'depth')).toBe(true)
+    expect(r.get('PSYCH312')?.slots.some((s) => s.slotId === 'depth')).toBe(false)
   })
 })
 

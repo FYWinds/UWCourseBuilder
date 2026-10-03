@@ -1,8 +1,8 @@
 import type { Plan, PlanTerm } from '@/domain/plan'
-import { SEQUENCES } from '@/domain/plan'
+import { SEQUENCES, resolveBreadthRule } from '@/domain/plan'
 import type { Program } from '@/domain/requirements'
 import type { CourseCode } from '@/domain/types'
-import { bcsCore, coopProgram } from '@/requirements/bcs'
+import { coopProgram, corePrograms } from '@/requirements/bcs'
 import { SPECS } from '@/requirements/specs'
 import { type Allocation, allocate } from './allocate'
 import { type CatalogIndex, countsTowardDegree, expandSet } from './catalog'
@@ -37,7 +37,7 @@ export interface AuditResult {
 /** Programs that apply to this plan, core first. */
 export function activePrograms(plan: Plan): Program[] {
   return [
-    bcsCore,
+    ...corePrograms(resolveBreadthRule(plan)),
     ...(SEQUENCES[plan.sequence].coop ? [coopProgram] : []),
     ...plan.specs.map((id) => SPECS[id]),
   ]

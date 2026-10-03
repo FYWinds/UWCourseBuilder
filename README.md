@@ -46,3 +46,8 @@ shipped to the browser. The app uses hash routing, so any static host works.
 Unofficial planning aid — the Undergraduate Calendar and CS advisors take precedence. Grades, averages and
 free-text requisites are flagged for manual checking, not evaluated. Sharing one course between two
 specializations is allowed by the engine but not verified against the calendar.
+
+Course requirements follow the 2026/27 calendar. The non-math elective rule is selectable: the 2026/27
+Elective Requirement (by faculty, ≥1.0 unit at the 200-level) or the Breadth & Depth requirement of 2025/26 and
+earlier calendars (Humanities / Social / Pure / Pure-or-Applied Sciences by subject, plus depth). By default it
+follows the 1A term. "Substantial math or CS content" exclusions for Breadth & Depth are not detected.

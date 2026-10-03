@@ -7,9 +7,9 @@
  * split; a mixed-unit pool (e.g. 0.25-unit labs in a breadth pool) may split a
  * course across slots — an accepted approximation.
  */
-import type { LevelFloor, Program, Slot } from '@/domain/requirements'
+import type { DepthRule, LevelFloor, Program, Slot } from '@/domain/requirements'
 import type { CourseCode } from '@/domain/types'
-import { type CatalogIndex, expandSet, numericPart } from './catalog'
+import { type CatalogIndex, collectCourses, countsTowardDegree, expandSet, numericPart } from './catalog'
 import { FlowGraph } from './flow'
 
 const toHundredths = (units: number) => Math.round(units * 100)
@@ -28,9 +28,22 @@ export interface FloorResult {
   satisfied: boolean
 }
 
+export interface DepthResult {
+  rule: DepthRule
+  satisfied: boolean
+  /** Subject that satisfies depth, or the closest one so far. */
+  subject?: string
+  /** Courses in that subject (the qualifying set when satisfied). */
+  courses: CourseCode[]
+  /** Units counted toward depth in that subject (capped at rule.units). */
+  units: number
+  via?: 'upper' | 'chain'
+}
+
 export interface Allocation {
   slots: SlotAllocation[]
   floors: FloorResult[]
+  depth?: DepthResult
   /** Course → slot id it was allocated to (largest share). */
   assignment: Map<CourseCode, string>
   /** Total units still missing across slots. */
@@ -136,13 +149,78 @@ export function allocate(
     satisfied: filled[si] >= toHundredths(slot.units),
   }))
   const deficit = slotResults.reduce((s, r) => s + Math.max(0, r.slot.units - r.filled), 0)
+  const depth = program.depth && evaluateDepth(program.depth, courses, idx)
   return {
     slots: slotResults,
     floors,
+    ...(depth && { depth }),
     assignment,
     deficit,
-    satisfied: deficit === 0 && floors.every((f) => f.satisfied),
+    satisfied: deficit === 0 && floors.every((f) => f.satisfied) && (depth?.satisfied ?? true),
   }
+}
+
+/** Longest prerequisite chain (as course list, earliest first) within `codes`. */
+function longestChain(codes: CourseCode[], idx: CatalogIndex): CourseCode[] {
+  const inSet = new Set(codes)
+  const preds = new Map(
+    codes.map((code) => [code, [...collectCourses(idx.byCode.get(code)?.prereq, new Set())].filter((p) => inSet.has(p) && p !== code)]),
+  )
+  const memo = new Map<CourseCode, CourseCode[]>()
+  const chainTo = (code: CourseCode, visiting: Set<CourseCode>): CourseCode[] => {
+    const cached = memo.get(code)
+    if (cached) return cached
+    visiting.add(code)
+    let best: CourseCode[] = []
+    for (const p of preds.get(code) ?? []) {
+      if (visiting.has(p)) continue
+      const chain = chainTo(p, visiting)
+      if (chain.length > best.length) best = chain
+    }
+    visiting.delete(code)
+    const result = [...best, code]
+    memo.set(code, result)
+    return result
+  }
+  return codes.map((c) => chainTo(c, new Set())).reduce((a, b) => (b.length > a.length ? b : a), [])
+}
+
+/**
+ * Depth: some subject has `rule.units` of eligible courses and either 0.5 unit at
+ * `upperLevel`+ or a prerequisite chain of `chainLength` courses. Uses every counted
+ * course, including ones already allocated to slots.
+ */
+export function evaluateDepth(rule: DepthRule, courses: CourseCode[], idx: CatalogIndex): DepthResult {
+  const pool = expandSet(rule.from, idx)
+  const bySubject = new Map<string, CourseCode[]>()
+  for (const code of courses) {
+    const c = idx.byCode.get(code)
+    if (!c || !pool.has(code) || !countsTowardDegree(c)) continue
+    bySubject.set(c.subject, [...(bySubject.get(c.subject) ?? []), code])
+  }
+  const unitsOf = (codes: CourseCode[]) => codes.reduce((s, code) => s + (idx.byCode.get(code)?.units ?? 0), 0)
+  // Closest unsatisfied subject: most units, then the longest prerequisite chain.
+  let closest: DepthResult = { rule, satisfied: false, courses: [], units: 0 }
+  let closestChain = 0
+  for (const [subject, codes] of bySubject) {
+    const units = unitsOf(codes)
+    const chain = longestChain(codes, idx)
+    if (units >= rule.units - 1e-9) {
+      const upper = codes.filter((code) => numericPart(idx.byCode.get(code)?.number ?? '0') >= rule.upperLevel)
+      if (unitsOf(upper) >= 0.5 - 1e-9) {
+        return { rule, satisfied: true, subject, courses: codes, units: rule.units, via: 'upper' }
+      }
+      if (chain.length >= rule.chainLength) {
+        return { rule, satisfied: true, subject, courses: chain, units: rule.units, via: 'chain' }
+      }
+    }
+    const capped = Math.min(units, rule.units)
+    if (capped > closest.units || (capped === closest.units && chain.length > closestChain)) {
+      closest = { rule, satisfied: false, subject, courses: codes, units: capped }
+      closestChain = chain.length
+    }
+  }
+  return closest
 }
 
 /**

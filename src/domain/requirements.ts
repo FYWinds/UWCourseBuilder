@@ -53,7 +53,21 @@ export interface Section {
   slots: Slot[]
 }
 
-export type ProgramKind = 'core' | 'coop' | 'spec'
+export type ProgramKind = 'core' | 'breadth' | 'coop' | 'spec'
+
+/**
+ * "Depth": `units` in one subject from `from`, where either at least 0.5 unit is at
+ * `upperLevel` or above, or `chainLength` courses form a prerequisite chain.
+ * Not a slot: depth may reuse courses that already fill other requirements.
+ */
+export interface DepthRule {
+  id: string
+  label: string
+  from: CourseSet
+  units: number
+  upperLevel: number
+  chainLength: number
+}
 
 export type SpecId = 'ai' | 'bio' | 'bus' | 'cfa' | 'dhw' | 'gd' | 'hci' | 'se'
 
@@ -72,6 +86,7 @@ export interface Program {
   enrolmentCode?: string
   sections: Section[]
   levelFloors?: LevelFloor[]
+  depth?: DepthRule
   /** Unit totals over all countable courses (optionally filtered), e.g. 20.0 units. */
   totals?: { id: string; label: string; units: number; from?: CourseSet }[]
   /** Changes this specialization makes to core slots (e.g. DHW: ECE 222 replaces CS 251). */

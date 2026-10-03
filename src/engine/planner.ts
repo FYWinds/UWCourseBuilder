@@ -1,6 +1,6 @@
-import { type Plan, type PlanTerm, SEQUENCES, TRANSFER_TERM_ID } from '@/domain/plan'
+import { type Plan, type PlanTerm, SEQUENCES, TRANSFER_TERM_ID, resolveBreadthRule } from '@/domain/plan'
 import type { CourseCode, TermLevel } from '@/domain/types'
-import { COMM_LIST_1 } from '@/requirements/bcs'
+import { commLists } from '@/requirements/bcs'
 import { type CatalogIndex, countsTowardDegree, formatCode } from './catalog'
 import { enrolmentTokens } from './classify'
 import { type RequisiteContext, evaluate, manualChecks, programAllows } from './requisites'
@@ -128,7 +128,7 @@ export function validatePlan(plan: Plan, idx: CatalogIndex): PlanValidation {
 
   // Communication: the first List 1 course should be done before 2A.
   const firstTwoA = terms.find((t) => t.level === '2A')
-  const list1Terms = COMM_LIST_1.flatMap((code) => {
+  const list1Terms = commLists(resolveBreadthRule(plan)).list1.flatMap((code) => {
     const termId = allPlaced.get(code)
     if (termId === undefined) return []
     return [termId === TRANSFER_TERM_ID ? -1 : Number(termId.slice(1))]

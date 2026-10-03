@@ -205,6 +205,9 @@ function SlotSelect({
       options: [
         ...pa.allocation.slots.filter((s) => !s.satisfied).map((s) => ({ id: s.slot.id, label: s.slot.label })),
         ...pa.allocation.floors.filter((f) => !f.satisfied).map((f) => ({ id: f.floor.id, label: f.floor.label })),
+        ...(pa.allocation.depth && !pa.allocation.depth.satisfied
+          ? [{ id: pa.allocation.depth.rule.id, label: 'Depth' }]
+          : []),
       ],
     }))
     .filter((g) => g.options.length > 0)

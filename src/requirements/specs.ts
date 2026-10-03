@@ -1,7 +1,7 @@
 /**
  * The eight CS specializations available to BCS students, 2026/27 calendar.
  * Within a specialization a course fulfils at most one requirement; courses may
- * also count toward the BCS major. See docs/research/bcs-calendar-2026-27.md.
+ * also count toward the BCS major. Raw program pages: data/raw/kuali/programs (pnpm data:kuali).
  */
 import type { Program, SpecId } from '@/domain/requirements'
 import { CALENDAR_BASE, CHECKLIST_BASE, oneOf, pick } from './helpers'

@@ -1,7 +1,7 @@
 /**
  * Bachelor of Computer Science (Honours), 2026/27 calendar.
  * Sources: Kuali programs r1y1WO5ka (degree) and SJPJkCAih (major);
- * CS checklist 2026-present-bcs-final1.pdf. See docs/research/bcs-calendar-2026-27.md.
+ * CS checklist 2026-present-bcs-final1.pdf. Raw program pages: data/raw/kuali/programs (pnpm data:kuali).
  */
 import type { CourseSet, Program } from '@/domain/requirements'
 import { CALENDAR_BASE, CHECKLIST_BASE, oneOf, pick } from './helpers'

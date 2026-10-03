@@ -6,8 +6,6 @@ specializations. It audits a plan against the degree requirements, classifies ev
 (co-op work terms included). Completed terms can be imported from a Quest Unofficial Transcript or Unofficial
 Grade Report (PDF or pasted text), parsed entirely in the browser.
 
-Design and requirement research: [`docs/PLAN.md`](docs/PLAN.md), [`docs/research/bcs-calendar-2026-27.md`](docs/research/bcs-calendar-2026-27.md).
-
 ## Stack
 
 Vite · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui (Radix) · TanStack Router/Table/Virtual · zustand ·

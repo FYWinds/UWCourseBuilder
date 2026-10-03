@@ -6,7 +6,7 @@ export const KUALI_BASE = 'https://uwaterloocm.kuali.co/api/v1/catalog'
 export const KUALI_CATALOG_ID = '67e557ed6ed2fe2bd3a38956'
 export const CALENDAR_LABEL = '2026-2027 Undergraduate Studies Academic Calendar'
 
-/** Program pids in the 2026/27 catalog (see docs/PLAN.md §2.1). */
+/** Program pids in the 2026/27 catalog (from /programs/{catalogId}). */
 export const PROGRAM_PIDS = {
   'bcs-degree': 'r1y1WO5ka',
   'bcs-major': 'SJPJkCAih',

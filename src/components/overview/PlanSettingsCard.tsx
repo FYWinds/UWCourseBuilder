@@ -10,6 +10,7 @@ import { buildTerms, termName } from '@/engine'
 import { SPECS, SPEC_IDS } from '@/requirements/specs'
 import { usePlanStore } from '@/store/plan'
 import { PlanFileActions } from './PlanFileActions'
+import { TranscriptImport } from './TranscriptImport'
 
 /** Fall terms 2023 … 2027 (term codes 1239 … 1279). */
 const START_TERMS = [123, 124, 125, 126, 127].map((y) => `${y}9`)
@@ -125,7 +126,10 @@ export function PlanSettingsCard() {
 
         <Separator />
 
-        <PlanFileActions />
+        <div className="space-y-2">
+          <TranscriptImport />
+          <PlanFileActions />
+        </div>
       </CardContent>
     </Card>
   )

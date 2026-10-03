@@ -22,3 +22,12 @@ export {
 export { type Issue, type PlanValidation, type Severity, placementKey, validatePlan } from './planner'
 export { type Verdict, evaluate, manualChecks, programAllows } from './requisites'
 export { type PlacedCourse, buildTerms, nextTermCode, parseTermCode, placedCourses, termName } from './terms'
+export {
+  type TranscriptImportResult,
+  type TranscriptSummary,
+  defaultEquivalences,
+  detectSpecs,
+  inferSequence,
+  parseTranscript,
+  planFromTranscript,
+} from './transcript'

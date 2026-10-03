@@ -17,6 +17,7 @@ export {
   STATUS_ORDER,
   classify,
   enrolmentTokens,
+  ruleCandidates,
   slotCandidates,
 } from './classify'
 export { type Issue, type PlanValidation, type Severity, placementKey, validatePlan } from './planner'

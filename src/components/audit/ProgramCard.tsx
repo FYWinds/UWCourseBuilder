@@ -89,7 +89,7 @@ function SlotRow({ sa, placedStatus, classification, idx }: { sa: SlotAllocation
       progress={
         <Progress taken={Math.min(takenUnits, sa.filled)} total={sa.filled} need={sa.slot.units} label={sa.slot.label} />
       }
-      action={!sa.satisfied && <SlotOptions slot={sa.slot} classification={classification} idx={idx} />}
+      action={!sa.satisfied && <SlotOptions target={{ slot: sa.slot }} classification={classification} idx={idx} />}
     >
       {sa.courses.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -194,6 +194,15 @@ export function ProgramCard({ audit: pa, takenAudit, placedStatus, classificatio
                       need={allocation.depth.rule.units}
                       label={allocation.depth.rule.label}
                     />
+                  }
+                  action={
+                    !allocation.depth.satisfied && (
+                      <SlotOptions
+                        target={{ programId: program.id, ruleId: allocation.depth.rule.id, label: 'Depth' }}
+                        classification={classification}
+                        idx={idx}
+                      />
+                    )
                   }
                 >
                   {allocation.depth.courses.length > 0 && (

@@ -243,3 +243,10 @@ export function slotCandidates(slot: Slot, result: ClassifyResult, idx: CatalogI
     .map((code) => idx.byCode.get(code))
     .filter((c): c is Course => !!c && !['blocked', 'taken', 'planned'].includes(result.byCode.get(c.code)?.status ?? 'blocked'))
 }
+
+/** Available courses classify tagged for a program-level rule (depth, level floor), by its slot id. */
+export function ruleCandidates(programId: string, ruleId: string, result: ClassifyResult, idx: CatalogIndex): Course[] {
+  return [...result.byCode]
+    .filter(([, cl]) => cl.status !== 'blocked' && cl.slots.some((s) => s.programId === programId && s.slotId === ruleId))
+    .flatMap(([code]) => idx.byCode.get(code) ?? [])
+}

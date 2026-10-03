@@ -8,13 +8,27 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { Slot } from '@/domain/requirements'
 import type { Course } from '@/domain/types'
-import { type CatalogIndex, type ClassifyResult, STATUS_ORDER, formatCode, slotCandidates } from '@/engine'
+import {
+  type CatalogIndex,
+  type ClassifyResult,
+  STATUS_ORDER,
+  formatCode,
+  ruleCandidates,
+  slotCandidates,
+} from '@/engine'
 
 const LIST_CAP = 60
 
-function sortedCandidates(slot: Slot, classification: ClassifyResult, idx: CatalogIndex): Course[] {
+/** An unmet slot, or a program-level rule (e.g. depth) whose candidates classify tagged. */
+export type OptionsTarget = { slot: Slot } | { programId: string; ruleId: string; label: string }
+
+function sortedCandidates(target: OptionsTarget, classification: ClassifyResult, idx: CatalogIndex): Course[] {
   const rank = (c: Course) => STATUS_ORDER.indexOf(classification.byCode.get(c.code)?.status ?? 'free')
-  return slotCandidates(slot, classification, idx).sort((a, b) => rank(a) - rank(b) || a.code.localeCompare(b.code))
+  const courses =
+    'slot' in target
+      ? slotCandidates(target.slot, classification, idx)
+      : ruleCandidates(target.programId, target.ruleId, classification, idx)
+  return courses.sort((a, b) => rank(a) - rank(b) || a.code.localeCompare(b.code))
 }
 
 function matches(course: Course, query: string): boolean {
@@ -24,21 +38,21 @@ function matches(course: Course, query: string): boolean {
   return course.code.toLowerCase().includes(compact) || course.title.toLowerCase().includes(q)
 }
 
-/** "Show options" popover: courses that could still fill an unmet slot. */
+/** "Show options" popover: courses that could still fill an unmet slot or rule. */
 export function SlotOptions({
-  slot,
+  target,
   classification,
   idx,
 }: {
-  slot: Slot
+  target: OptionsTarget
   classification: ClassifyResult
   idx: CatalogIndex
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const candidates = useMemo(
-    () => (open ? sortedCandidates(slot, classification, idx) : []),
-    [open, slot, classification, idx],
+    () => (open ? sortedCandidates(target, classification, idx) : []),
+    [open, target, classification, idx],
   )
   const filtered = useMemo(() => candidates.filter((c) => matches(c, query)), [candidates, query])
   const shown = filtered.slice(0, LIST_CAP)
@@ -53,7 +67,7 @@ export function SlotOptions({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[30rem] max-w-[calc(100vw-2rem)] p-0">
         <div className="border-b px-3 py-2">
-          <p className="text-sm font-medium">{slot.label}</p>
+          <p className="text-sm font-medium">{'slot' in target ? target.slot.label : target.label}</p>
           <p className="text-xs text-muted-foreground">
             {candidates.length} available course{candidates.length === 1 ? '' : 's'}, most useful first
           </p>

@@ -22,9 +22,16 @@ export const PROGRAM_PIDS = {
 
 export const OPENDATA_BASE = 'https://openapi.data.uwaterloo.ca/v3'
 
-/** Terms used to infer offering patterns: last 3 academic years. */
+/** Term code ("1" + 2-digit year + 1/5/9 for Winter/Spring/Fall) of the term in progress on `date`. */
+function termCodeOn(date: Date): string {
+  const month = date.getUTCMonth()
+  return `1${String(date.getUTCFullYear() % 100).padStart(2, '0')}${month < 4 ? 1 : month < 8 ? 5 : 9}`
+}
+
+/**
+ * Terms used for offering history: last 3 academic years, up to the term in progress.
+ * Later terms are excluded — their schedules are still changing during enrolment.
+ */
 export const OFFERING_TERMS = [
   '1239', '1241', '1245', '1249', '1251', '1255', '1259', '1261', '1265', '1269', '1271',
-]
-/** Terms scanned section-by-section for online (ONLN) offerings. */
-export const ONLINE_SCAN_TERMS = ['1261', '1265', '1269']
+].filter((term) => term <= termCodeOn(new Date()))

@@ -8,7 +8,7 @@ import {
   sortFn_text,
   tableFeatures,
 } from '@tanstack/react-table'
-import { CalendarCheck, CalendarPlus, CheckCircle2, Laptop } from 'lucide-react'
+import { CalendarCheck, CalendarPlus, CheckCircle2 } from 'lucide-react'
 import { AddToTermMenu } from '@/components/course/AddToTermMenu'
 import { CourseLink } from '@/components/course/CourseLink'
 import { FACULTY_LABEL, SEASON_LABEL, SEASONS } from '@/components/course/labels'
@@ -88,8 +88,8 @@ export const columns = helper.columns([
 ])
 
 function OfferedPills({ row }: { row: CourseRow }) {
-  const { offered, online } = row.course
-  const label = `Offered: ${offered.length ? offered.map((s) => SEASON_LABEL[s]).join(', ') : 'no recent offerings'}${online ? '; online section' : ''}`
+  const { offered } = row.course
+  const label = `Offered: ${offered.length ? offered.map((s) => SEASON_LABEL[s]).join(', ') : 'no recent offerings'}`
   return (
     <span className="flex items-center gap-0.5" aria-label={label} title={label}>
       {SEASONS.map((s) => (
@@ -104,7 +104,6 @@ function OfferedPills({ row }: { row: CourseRow }) {
           {s}
         </span>
       ))}
-      {online && <Laptop className="ml-1 size-3.5 text-status-taken" aria-hidden />}
     </span>
   )
 }

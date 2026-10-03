@@ -12,14 +12,13 @@ export interface ExploreSearch {
   level?: number
   faculty?: Faculty
   season?: Season
-  onlineOnly?: boolean
   /** "programId:slotId". */
   slot?: string
   /** Column id, prefixed with "-" for descending. Absent = status order. */
   sort?: string
 }
 
-export const FILTER_KEYS = ['q', 'status', 'subject', 'level', 'faculty', 'season', 'onlineOnly', 'slot'] as const
+export const FILTER_KEYS = ['q', 'status', 'subject', 'level', 'faculty', 'season', 'slot'] as const
 /** Patch that removes every filter (sort is kept). */
 export const CLEARED_FILTERS: Partial<ExploreSearch> = {
   q: undefined,
@@ -28,7 +27,6 @@ export const CLEARED_FILTERS: Partial<ExploreSearch> = {
   level: undefined,
   faculty: undefined,
   season: undefined,
-  onlineOnly: undefined,
   slot: undefined,
 }
 
@@ -52,7 +50,6 @@ export function validateExploreSearch(raw: Record<string, unknown>): ExploreSear
   if (faculty in FACULTY_LABEL) out.faculty = faculty as Faculty
   const season = SEASONS.find((s) => s === raw.season)
   if (season) out.season = season
-  if (raw.onlineOnly === true || raw.onlineOnly === 'true') out.onlineOnly = true
   const slot = text(raw.slot)
   if (slot.includes(':')) out.slot = slot
   const sort = text(raw.sort)
@@ -65,7 +62,6 @@ type Preset = { id: string; label: string; search: Partial<ExploreSearch> }
 const COMMON_PRESETS: Preset[] = [
   { id: 'must', label: 'Must & required', search: { status: ['must', 'required'] } },
   { id: 'counts', label: 'Counts toward a requirement', search: { status: ['must', 'required', 'counts'] } },
-  { id: 'online', label: 'Online (for work terms)', search: { onlineOnly: true, status: ['must', 'required', 'counts', 'free'] } },
 ]
 
 const BREADTH_PRESETS: Record<BreadthRule, Preset[]> = {
@@ -172,7 +168,6 @@ export function filterRows(
     if (search.level && (search.level === 400 ? c.level < 400 : c.level !== search.level)) return false
     if (search.faculty && c.faculty !== search.faculty) return false
     if (search.season && !c.offered.includes(search.season)) return false
-    if (search.onlineOnly && !c.online) return false
     if (inSlot && !inSlot(c.code)) return false
     if (codeQuery && titleQuery && !c.code.includes(codeQuery) && !c.title.toLowerCase().includes(titleQuery)) return false
     return true

@@ -7,14 +7,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import type { Catalog, Course, Faculty, Season } from '../src/domain/types.ts'
-import {
-  CALENDAR_LABEL,
-  KUALI_CATALOG_ID,
-  OFFERING_TERMS,
-  ONLINE_SCAN_TERMS,
-  OUT_DIR,
-  RAW_DIR,
-} from './lib/config.ts'
+import { CALENDAR_LABEL, KUALI_CATALOG_ID, OFFERING_TERMS, OUT_DIR, RAW_DIR } from './lib/config.ts'
 import { countKinds, parseAntirequisites, parseRequisite } from './lib/requisites.ts'
 
 interface KualiCourse {
@@ -75,7 +68,8 @@ async function main() {
   // Faculty: most recent Open Data catalog row wins; fall back to the subject's majority faculty.
   const facultyByCode = new Map<string, Faculty>()
   const subjectVotes = new Map<string, Map<Faculty, number>>()
-  // Offerings: which sampled terms scheduled each course code.
+  // Offerings: which sampled terms scheduled each course id. Cross-listed codes share an id,
+  // so a term may be credited to every code of the listing even if only one had sections.
   const termsByCode = new Map<string, string[]>()
   for (const term of OFFERING_TERMS) {
     const coursesPath = `${RAW_DIR}/opendata/courses-${term}.json`
@@ -95,14 +89,6 @@ async function main() {
         termsByCode.set(code, list)
       }
     }
-  }
-  const online = new Set<string>()
-  const scannedOnline: string[] = []
-  for (const term of ONLINE_SCAN_TERMS) {
-    const path = `${RAW_DIR}/opendata/online-${term}.json`
-    if (!existsSync(path)) continue
-    scannedOnline.push(term)
-    for (const code of await readJson<string[]>(path)) online.add(code)
   }
   const subjectFaculty = (subject: string): Faculty => {
     const votes = subjectVotes.get(subject)
@@ -142,7 +128,6 @@ async function main() {
       crossListed: (k.crossListedCourses ?? []).map((c) => c.__catalogCourseId),
       offered: (['F', 'W', 'S'] as Season[]).filter((s) => offered.includes(s)),
       offeredTerms,
-      online: online.has(code),
       ...(stripHtml(k.notes) && { notes: stripHtml(k.notes) }),
     }
   })
@@ -154,7 +139,6 @@ async function main() {
       catalogId: KUALI_CATALOG_ID,
       fetchedAt: new Date().toISOString(),
       offeringTerms: OFFERING_TERMS.filter((t) => existsSync(`${RAW_DIR}/opendata/courses-${t}.json`)),
-      onlineScanTerms: scannedOnline,
       courseCount: courses.length,
     },
     courses,
@@ -169,7 +153,7 @@ async function main() {
   console.log(`catalog.json: ${courses.length} courses, ${(json.length / 1e6).toFixed(2)} MB`)
   console.log(`requisite nodes: ${JSON.stringify(kinds)}`)
   console.log(`unstructured leaves: ${kinds.text ?? 0}/${leafTotal} (${(((kinds.text ?? 0) / leafTotal) * 100).toFixed(1)}%)`)
-  console.log(`offerings: ${termsByCode.size} codes; online: ${online.size} codes over ${scannedOnline.join(',') || 'no terms'}`)
+  console.log(`offerings: ${termsByCode.size} codes over ${OFFERING_TERMS.join(',')}`)
   if (process.argv.includes('--samples')) console.log(textSamples.join('\n'))
 }
 

@@ -1,4 +1,3 @@
-import { Laptop } from 'lucide-react'
 import type { Course, CatalogMeta, Season } from '@/domain/types'
 import { parseTermCode } from '@/engine'
 import { cn } from '@/lib/utils'
@@ -14,7 +13,6 @@ export function OfferingHistory({ course, meta }: { course: Course; meta: Catalo
     years.set(academicYear, { ...years.get(academicYear), [season]: code })
   }
   const count = meta.offeringTerms.filter((t) => offered.has(t)).length
-  const scan = meta.onlineScanTerms.map(shortTermName).join(', ')
 
   return (
     <div className="space-y-3">
@@ -54,16 +52,9 @@ export function OfferingHistory({ course, meta }: { course: Course; meta: Catalo
         ))}
       </div>
       <p className="text-xs text-muted-foreground">
-        Scheduled in {count} of {meta.offeringTerms.length} sampled terms
-        {course.offered.length > 0 && ` (${course.offered.map((s) => SEASON_LABEL[s]).join(', ')})`}.
-      </p>
-      <p className="flex items-center gap-1.5 text-xs">
-        <Laptop className={cn('size-3.5', course.online ? 'text-status-taken' : 'text-muted-foreground')} aria-hidden />
-        {course.online
-          ? `Had an online section${scan ? ` in ${scan}` : ''} — a candidate for work terms.`
-          : scan
-            ? `No online section found in ${scan}.`
-            : 'No online section recorded in this data snapshot.'}
+        Scheduled in {count} of {meta.offeringTerms.length} past terms
+        {course.offered.length > 0 && ` (${course.offered.map((s) => SEASON_LABEL[s]).join(', ')})`}. Historical reference
+        only — check Quest for the upcoming term; cross-listed codes may show terms in which only a partner code ran.
       </p>
     </div>
   )

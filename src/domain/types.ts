@@ -40,8 +40,6 @@ export interface Course {
   offered: Season[]
   /** Sampled term codes in which the course was scheduled. */
   offeredTerms: string[]
-  /** Had an online (ONLN) lecture section in a recently scanned term. */
-  online: boolean
   notes?: string
 }
 
@@ -50,7 +48,6 @@ export interface CatalogMeta {
   catalogId: string
   fetchedAt: string
   offeringTerms: string[]
-  onlineScanTerms: string[]
   courseCount: number
 }
 

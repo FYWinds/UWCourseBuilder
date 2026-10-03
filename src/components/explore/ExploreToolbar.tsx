@@ -12,9 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import type { Faculty, Season } from '@/domain/types'
 import { type AuditResult, type CatalogIndex, STATUS_ORDER } from '@/engine'
 import { CLEARED_FILTERS, type ExploreSearch, FILTER_KEYS, LEVELS, slotLabel } from './search'
@@ -89,16 +87,6 @@ export function ExploreToolbar({
         </SelectContent>
       </Select>
       <SlotSelect value={search.slot} audit={audit} onChange={(slot) => onChange({ slot })} />
-      <div className="flex items-center gap-2 px-1">
-        <Switch
-          id="explore-online"
-          checked={!!search.onlineOnly}
-          onCheckedChange={(on) => onChange({ onlineOnly: on || undefined })}
-        />
-        <Label htmlFor="explore-online" className="text-sm font-normal">
-          Online only
-        </Label>
-      </div>
       {active && (
         <Button variant="ghost" size="sm" onClick={() => onChange(CLEARED_FILTERS)}>
           <X />

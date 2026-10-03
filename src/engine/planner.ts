@@ -18,7 +18,6 @@ export interface Issue {
     | 'program'
     | 'level'
     | 'season'
-    | 'online'
     | 'manual'
     | 'load'
     | 'off'
@@ -50,7 +49,6 @@ export function validatePlan(plan: Plan, idx: CatalogIndex): PlanValidation {
   const byPlacement = new Map<string, Issue[]>()
   const byTerm = new Map<string, Issue[]>()
   const planIssues: Issue[] = []
-  const hasOnlineData = idx.meta.onlineScanTerms.length > 0
 
   const allPlaced = new Map<CourseCode, string>()
   for (const [termId, codes] of Object.entries(plan.placements)) codes.forEach((c) => allPlaced.set(c, termId))
@@ -94,9 +92,6 @@ export function validatePlan(plan: Plan, idx: CatalogIndex): PlanValidation {
           issues.push({ severity: 'info', kind: 'season', message: 'Not scheduled in any sampled term' })
         } else if (!c.offered.includes(term.season)) {
           issues.push({ severity: 'warning', kind: 'season', message: `Usually offered in ${c.offered.join('/')} only` })
-        }
-        if (term.kind === 'work' && hasOnlineData && !c.online && !WT_EXEMPT.has(c.subject)) {
-          issues.push({ severity: 'warning', kind: 'online', message: 'No online section in recently scanned terms' })
         }
       }
       byPlacement.set(placementKey(term.id, code), issues)

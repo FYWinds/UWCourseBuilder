@@ -16,7 +16,7 @@ dnd-kit · React Flow + ELK (web worker) · Vitest · Playwright.
 | Source | Used for | Key |
 |---|---|---|
 | Kuali catalog API behind the official Undergraduate Calendar (`uwaterloocm.kuali.co`, catalog `67e557ed6ed2fe2bd3a38956`) | courses, prerequisites/antirequisites, program pages | none |
-| [UW Open Data API v3](https://openapi.data.uwaterloo.ca/api-docs/) | offering history (F/W/S), faculty of each course, online sections | `UW_API_KEY` |
+| [UW Open Data API v3](https://openapi.data.uwaterloo.ca/api-docs/) | offering history of past terms (F/W/S), faculty of each course | `UW_API_KEY` |
 
 The snapshot lives in `public/data/catalog.json` (committed). Requirements are hand-encoded in
 `src/requirements/` and cross-checked against the calendar pages by `pnpm data:validate`.

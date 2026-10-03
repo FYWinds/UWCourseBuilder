@@ -1,0 +1,160 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Warm paper theme: stone neutrals, amber primary (planning/actions),
+ * teal accent (completed), rust destructive (must-take / errors).
+ */
+:root {
+  --radius: 0.6rem;
+  --background: oklch(0.975 0.012 85);
+  --foreground: oklch(0.27 0.02 55);
+  --card: oklch(0.99 0.008 85);
+  --card-foreground: oklch(0.27 0.02 55);
+  --popover: oklch(0.99 0.008 85);
+  --popover-foreground: oklch(0.27 0.02 55);
+  --primary: oklch(0.72 0.15 70);
+  --primary-foreground: oklch(0.25 0.04 60);
+  --secondary: oklch(0.94 0.018 80);
+  --secondary-foreground: oklch(0.32 0.025 55);
+  --muted: oklch(0.94 0.014 82);
+  --muted-foreground: oklch(0.5 0.025 60);
+  --accent: oklch(0.93 0.03 190);
+  --accent-foreground: oklch(0.33 0.06 195);
+  --destructive: oklch(0.55 0.15 35);
+  --border: oklch(0.88 0.015 80);
+  --input: oklch(0.86 0.018 80);
+  --ring: oklch(0.72 0.15 70);
+  --chart-1: oklch(0.72 0.15 70);
+  --chart-2: oklch(0.6 0.09 190);
+  --chart-3: oklch(0.55 0.15 35);
+  --chart-4: oklch(0.65 0.08 140);
+  --chart-5: oklch(0.6 0.06 280);
+
+  /* Course status palette (badges, graph nodes, planner cards). */
+  --status-taken: oklch(0.6 0.09 190);
+  --status-taken-foreground: oklch(0.98 0.01 190);
+  --status-planned: oklch(0.72 0.15 70);
+  --status-must: oklch(0.55 0.15 35);
+  --status-must-foreground: oklch(0.98 0.01 60);
+  --status-required: oklch(0.62 0.13 45);
+  --status-counts: oklch(0.93 0.06 80);
+  --status-counts-foreground: oklch(0.42 0.09 65);
+  --status-free: oklch(0.92 0.012 80);
+  --status-free-foreground: oklch(0.45 0.02 60);
+  --status-blocked: oklch(0.7 0.01 70);
+
+  --paper-noise-opacity: 0.035;
+}
+
+.dark {
+  --background: oklch(0.21 0.012 60);
+  --foreground: oklch(0.93 0.015 85);
+  --card: oklch(0.25 0.012 60);
+  --card-foreground: oklch(0.93 0.015 85);
+  --popover: oklch(0.25 0.012 60);
+  --popover-foreground: oklch(0.93 0.015 85);
+  --primary: oklch(0.78 0.14 75);
+  --primary-foreground: oklch(0.22 0.03 60);
+  --secondary: oklch(0.3 0.014 60);
+  --secondary-foreground: oklch(0.9 0.015 85);
+  --muted: oklch(0.29 0.012 60);
+  --muted-foreground: oklch(0.7 0.02 75);
+  --accent: oklch(0.33 0.04 195);
+  --accent-foreground: oklch(0.88 0.05 190);
+  --destructive: oklch(0.65 0.15 35);
+  --border: oklch(0.33 0.012 60);
+  --input: oklch(0.36 0.014 60);
+  --ring: oklch(0.78 0.14 75);
+
+  --status-taken: oklch(0.7 0.09 190);
+  --status-taken-foreground: oklch(0.2 0.03 190);
+  --status-planned: oklch(0.78 0.14 75);
+  --status-must: oklch(0.65 0.15 35);
+  --status-must-foreground: oklch(0.18 0.02 40);
+  --status-required: oklch(0.7 0.12 50);
+  --status-counts: oklch(0.35 0.06 75);
+  --status-counts-foreground: oklch(0.88 0.08 80);
+  --status-free: oklch(0.3 0.012 60);
+  --status-free-foreground: oklch(0.78 0.02 75);
+  --status-blocked: oklch(0.5 0.01 60);
+
+  --paper-noise-opacity: 0;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces Variable", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-status-taken: var(--status-taken);
+  --color-status-taken-foreground: var(--status-taken-foreground);
+  --color-status-planned: var(--status-planned);
+  --color-status-must: var(--status-must);
+  --color-status-must-foreground: var(--status-must-foreground);
+  --color-status-required: var(--status-required);
+  --color-status-counts: var(--status-counts);
+  --color-status-counts-foreground: var(--status-counts-foreground);
+  --color-status-free: var(--status-free);
+  --color-status-free-foreground: var(--status-free-foreground);
+  --color-status-blocked: var(--status-blocked);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  /* Subtle paper grain; disabled in dark mode via the opacity token. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: var(--paper-noise-opacity);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-serif tracking-tight;
+  }
+}

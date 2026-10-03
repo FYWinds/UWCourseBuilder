@@ -3,7 +3,8 @@
 Static planner for the University of Waterloo **Bachelor of Computer Science (2026/27 calendar)** and its eight CS
 specializations. It audits a plan against the degree requirements, classifies every course as
 *must take / required (one of) / counts toward / free elective / blocked*, and validates a term-by-term plan
-(co-op work terms included).
+(co-op work terms included). Completed terms can be imported from a Quest Unofficial Transcript or Unofficial
+Grade Report (PDF or pasted text), parsed entirely in the browser.
 
 Design and requirement research: [`docs/PLAN.md`](docs/PLAN.md), [`docs/research/bcs-calendar-2026-27.md`](docs/research/bcs-calendar-2026-27.md).
 

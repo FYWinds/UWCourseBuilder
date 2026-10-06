@@ -133,16 +133,31 @@ function textUnits(text: string): number | null {
   return m[2].startsWith('unit') ? Number(m[1]) : Number(m[1]) * 0.5
 }
 
+/** "Complete N of [groups]" whose groups are each expressible: one option per combination. */
+interface DraftChoice {
+  label: string
+  options: { label: string; slots: DraftSlot[] }[]
+}
+
 interface Draft {
   slots: DraftSlot[]
+  choices: DraftChoice[]
   manual: string[]
   excluded: string[]
   /** "no more than N from …" constraints, attached to the slots of the enclosing group. */
   caps: { codes: string[]; max: number }[]
 }
 
+/** k-element subsets of `items`, in order. */
+function combinations<T>(items: T[], k: number): T[][] {
+  if (k === 0) return [[]]
+  return items.flatMap((item, i) => combinations(items.slice(i + 1), k - 1).map((rest) => [item, ...rest]))
+}
+
+const MAX_OPTIONS = 6
+
 function convertRule(rule: Extract<RuleNode, { kind: 'rule' }>): Draft {
-  const empty: Draft = { slots: [], manual: [], excluded: [], caps: [] }
+  const empty: Draft = { slots: [], choices: [], manual: [], excluded: [], caps: [] }
   const { text, courses } = rule
   const codes = courses.map((c) => c.code)
   const unitsOf = (cs: Course[]) => Math.min(...cs.map((c) => c.units))
@@ -186,6 +201,7 @@ function convert(node: RuleNode): Draft {
   const parts = node.children.map(convert)
   const merged: Draft = {
     slots: parts.flatMap((p) => p.slots),
+    choices: parts.flatMap((p) => p.choices),
     manual: parts.flatMap((p) => p.manual),
     excluded: parts.flatMap((p) => p.excluded),
     caps: parts.flatMap((p) => p.caps),
@@ -201,7 +217,22 @@ function convert(node: RuleNode): Draft {
       slots: [{ units: units[0], required: false, set: `{ union: [${sets.join(', ')}] }`, label: `One of: ${options.map((o) => o[0].label).join(' | ')}` }],
     }
   }
-  return { slots: [], manual: [describe(node)], excluded: merged.excluded, caps: [] }
+  // Paths made of different course groups: a choice with one option per combination of N groups.
+  const expressible = merged.manual.length === 0 && merged.choices.length === 0 && options.every((o) => o.some((s) => s.units > 0))
+  const combos = combinations(options, node.need)
+  if (expressible && combos.length <= MAX_OPTIONS) {
+    return {
+      ...merged,
+      slots: [],
+      choices: [
+        {
+          label: node.need === 1 ? 'One of these paths' : `${node.need} of these ${options.length} groups`,
+          options: combos.map((combo) => ({ label: combo.flat().map((s) => s.label).join(' + '), slots: combo.flat() })),
+        },
+      ],
+    }
+  }
+  return { slots: [], choices: [], manual: [describe(node)], excluded: merged.excluded, caps: [] }
 }
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -250,21 +281,30 @@ async function main() {
     manual.push(...draft.manual.map((m) => `${section.label}: ${m}`))
     excluded.push(...draft.excluded)
     const sid = slug(section.label) || 'required'
-    const slots = draft.slots.filter((s) => s.units > 0)
     const capNote = draft.caps.map((c) => `MANUAL: no more than ${c.max} from ${c.codes.join(', ')}`)
     manual.push(...capNote)
-    const body = slots.map((s, i) => {
+    const emit = (s: DraftSlot, i: number, prefix: string, indent: string) => {
       if (s.codes && s.required) {
         const unitsArg = s.units === 0.5 ? '' : `, ${s.units}`
-        return `        oneOf(${quote(slotId(s.codes[0].toLowerCase()))}, [${s.codes.map(quote).join(', ')}]${unitsArg}),`
+        return `${indent}oneOf(${quote(slotId(s.codes[0].toLowerCase()))}, [${s.codes.map(quote).join(', ')}]${unitsArg}),`
       }
       const count = s.units / 0.5
       const set = excluded.length ? `{ minus: [${s.set}, EXCLUDED] }` : s.set
       return Number.isInteger(count)
-        ? `        pick(${quote(slotId(`${sid}-${i + 1}`))}, ${quote(s.label)}, ${count}, ${set}),`
-        : `        { id: ${quote(slotId(`${sid}-${i + 1}`))}, label: ${quote(s.label)}, units: ${s.units}, from: ${set}, kind: 'elective' },`
+        ? `${indent}pick(${quote(slotId(`${prefix}-${i + 1}`))}, ${quote(s.label)}, ${count}, ${set}),`
+        : `${indent}{ id: ${quote(slotId(`${prefix}-${i + 1}`))}, label: ${quote(s.label)}, units: ${s.units}, from: ${set}, kind: 'elective' },`
+    }
+    const body = draft.slots.filter((s) => s.units > 0).map((s, i) => emit(s, i, sid, '        '))
+    const choices = draft.choices.map((c, ci) => {
+      const cid = slotId(`${sid}-choice-${ci + 1}`)
+      const options = c.options.map((o, oi) => {
+        const slots = o.slots.filter((s) => s.units > 0).map((s, i) => emit(s, i, `${cid}-${oi + 1}`, '                '))
+        return `            {\n              id: ${quote(`${cid}-${oi + 1}`)},\n              label: ${quote(o.label)},\n              slots: [\n${slots.join('\n')}\n              ],\n            },`
+      })
+      return `        {\n          id: ${quote(cid)},\n          label: ${quote(c.label)},\n          options: [\n${options.join('\n')}\n          ],\n        },`
     })
-    return `    {\n      id: ${quote(sid)},\n      label: ${quote(section.label)},\n      slots: [\n${body.join('\n')}\n      ],\n    },`
+    const choiceSource = choices.length ? `\n      choices: [\n${choices.join('\n')}\n      ],` : ''
+    return `    {\n      id: ${quote(sid)},\n      label: ${quote(section.label)},\n      slots: [\n${body.join('\n')}\n      ],${choiceSource}\n    },`
   })
 
   const constraints = htmlText(program.additionalConstraints)

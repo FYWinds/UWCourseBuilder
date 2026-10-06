@@ -107,15 +107,18 @@ function implies(inner: Slot, outer: Slot): boolean {
  * List A followed by the major's sections, for one allocation group. A major requirement
  * and a List A requirement met by the same course must not demand two courses: when a
  * major slot is at least as specific as a List A slot (MATH 237/247 vs. MATH 237/239/247/249)
- * the List A slot is dropped; when the List A slot is the more specific one, the major
- * slot is dropped.
+ * the List A slot is dropped — also when every option of a major choice has such a slot;
+ * when the List A slot is the more specific one, the major slot is dropped.
  */
 export function withListA(sections: Section[]): Section[] {
   const majorSlots = sections.flatMap((s) => s.slots)
-  const listA = LIST_A.slots.filter((a) => !majorSlots.some((m) => implies(m, a)))
+  const choices = sections.flatMap((s) => s.choices ?? [])
+  const covered = (a: Slot) =>
+    majorSlots.some((m) => implies(m, a)) || choices.some((c) => c.options.every((o) => o.slots.some((m) => implies(m, a))))
+  const listA = LIST_A.slots.filter((a) => !covered(a))
   const major = sections
     .map((s) => ({ ...s, slots: s.slots.filter((m) => !listA.some((a) => implies(a, m))) }))
-    .filter((s) => s.slots.length > 0)
+    .filter((s) => s.slots.length > 0 || s.choices?.length)
   return [{ ...LIST_A, slots: listA }, ...major]
 }
 

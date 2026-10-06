@@ -48,10 +48,31 @@ export interface LevelFloor {
   absorbingSlot: string
 }
 
+/** One way of meeting a choice: all of its slots. */
+export interface ChoiceOption {
+  id: string
+  label: string
+  slots: Slot[]
+}
+
+/**
+ * Calendar "complete one of these paths" where the paths are different course groups
+ * (e.g. MATH 247, or MATH 237 and PMATH 333). Exactly one option's slots must be met;
+ * the audit uses whichever option is closest to complete. Option slot ids are unique
+ * within the program.
+ */
+export interface Choice {
+  id: string
+  label: string
+  options: ChoiceOption[]
+  note?: string
+}
+
 export interface Section {
   id: string
   label: string
   slots: Slot[]
+  choices?: Choice[]
 }
 
 /** core: the major (one allocation group); degree: degree-level group such as communication. */

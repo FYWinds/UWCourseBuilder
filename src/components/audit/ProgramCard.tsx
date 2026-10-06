@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CourseCode } from '@/domain/types'
 import type { CatalogIndex, ClassifyResult, ProgramAudit, SlotAllocation } from '@/engine'
+import { sectionSlots } from '@/engine'
 import { depthHint } from '@/components/overview/summary'
 import { issueUrl } from '@/lib/repo'
 import { cn } from '@/lib/utils'
@@ -158,9 +159,10 @@ export function ProgramCard({ audit: pa, takenAudit, placedStatus, classificatio
       </CardHeader>
       <CardContent className="space-y-5">
         {program.sections.map((section) => {
-          const rows = section.slots.flatMap((s) => bySlot.get(s.id) ?? [])
+          const rows = sectionSlots(section, allocation)
           const need = rows.reduce((s, r) => s + r.slot.units, 0)
           const have = rows.reduce((s, r) => s + r.filled, 0)
+          const choices = allocation.choices.filter((c) => section.choices?.includes(c.choice))
           return (
             <section key={section.id} className="break-inside-avoid">
               <div className="flex items-baseline justify-between gap-3 border-b pb-1">
@@ -170,8 +172,29 @@ export function ProgramCard({ audit: pa, takenAudit, placedStatus, classificatio
                 </span>
               </div>
               <ul className="divide-y divide-dashed">
-                {rows.map((sa) => (
+                {section.slots.flatMap((s) => bySlot.get(s.id) ?? []).map((sa) => (
                   <SlotRow key={sa.slot.id} sa={sa} placedStatus={placedStatus} classification={classification} idx={idx} />
+                ))}
+                {choices.map(({ choice, option, satisfied }) => (
+                  <li key={choice.id} className="space-y-1 py-2.5" data-testid={`choice-${choice.id}`}>
+                    <div className="flex items-center gap-3">
+                      <Check ok={satisfied} label={choice.label} />
+                      <span className={cn('text-sm', satisfied && 'text-muted-foreground')}>{choice.label}</span>
+                      <Badge variant="outline" className="text-[0.7rem]">
+                        One of {choice.options.length} options
+                      </Badge>
+                    </div>
+                    <p className="pl-7 text-xs text-muted-foreground">
+                      Counting <span className="font-medium text-foreground">{option.label}</span>
+                      {' — '}or instead: {choice.options.filter((o) => o !== option).map((o) => o.label).join('; ')}
+                      {choice.note && <> · <LinkedText text={choice.note} idx={idx} /></>}
+                    </p>
+                    <ul className="ml-7 divide-y divide-dashed border-l pl-3">
+                      {option.slots.flatMap((s) => bySlot.get(s.id) ?? []).map((sa) => (
+                        <SlotRow key={sa.slot.id} sa={sa} placedStatus={placedStatus} classification={classification} idx={idx} />
+                      ))}
+                    </ul>
+                  </li>
                 ))}
               </ul>
             </section>

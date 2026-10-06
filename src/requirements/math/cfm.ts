@@ -4,7 +4,7 @@
  * Its own degree (BCFM): 20.25 units, no List A or math-unit minimum, the communication
  * courses sit inside the major, co-op only.
  */
-import type { Major, Program } from '@/domain/requirements'
+import type { CourseSet, Major, Program } from '@/domain/requirements'
 import { CALENDAR_BASE, oneOf, pick } from '../helpers'
 import { MATH_REQUISITE_TOKENS, mathCoop } from '../math-faculty'
 
@@ -13,7 +13,20 @@ const NAME = 'Computing and Financial Management (Bachelor of Computing and Fina
 const SHORT_NAME = 'Computing & Financial Management'
 const ENROLMENT_CODE = 'H-Computing & Financial Management'
 
-const AFM_UPPER = { range: { subject: 'AFM', from: 300, to: 499 } }
+const AFM_UPPER: CourseSet = { range: { subject: 'AFM', from: 300, to: 499 } }
+
+const BUSINESS_OPTIONS: CourseSet = {
+  union: [
+    {
+      list: [
+        'AFM291', 'ARBUS202', 'ARBUS302', 'CFM401', 'ECON201', 'ECON206', 'ECON207', 'ECON231', 'ECON332', 'MGMT244',
+        'PHIL215',
+      ],
+    },
+    AFM_UPPER,
+  ],
+}
+const BUSINESS_LABEL = 'AFM 291, ARBUS 202, ARBUS 302, CFM 401, ECON 201, 206, 207, 231, 332, MGMT 244, PHIL 215, or AFM at the 300-level or above'
 
 const core: Program = {
   id: 'core',
@@ -43,27 +56,32 @@ const core: Program = {
     {
       id: 'business-options',
       label: 'Business options',
-      slots: [
-        pick(
-          'business2',
-          '2 of AFM 291, ARBUS 202, ARBUS 302, CFM 401, ECON 201, 206, 207, 231, 332, MGMT 244, PHIL 215, or AFM at the 300-level or above',
-          2,
-          {
-            union: [
-              {
-                list: [
-                  'AFM291', 'ARBUS202', 'ARBUS302', 'CFM401', 'ECON201', 'ECON206', 'ECON207', 'ECON231', 'ECON332',
-                  'MGMT244', 'PHIL215',
-                ],
-              },
-              AFM_UPPER,
-            ],
-          },
-          { kind: 'required' },
-        ),
-        pick('afm-upper', '1.5 units of AFM courses at the 300-level or above (CFM 401 may replace one)', 3, {
-          union: [AFM_UPPER, { list: ['CFM401'] }],
-        }, { kind: 'required' }),
+      slots: [],
+      choices: [
+        {
+          id: 'business-afm',
+          label: 'Business options and upper-year AFM',
+          note: 'The calendar asks for 2 business options, then either CFM 401 (unless already used as a business option) and 1.0 unit of AFM at the 300-level or above, or 1.5 units of AFM at the 300-level or above. CFM 401 counted on its own path also stands in for one business option, so that path needs only one more.',
+          options: [
+            {
+              id: 'cfm401',
+              label: 'CFM 401 and 1.0 unit of AFM 300+',
+              slots: [
+                oneOf('cfm401', ['CFM401']),
+                pick('business1', `1 of ${BUSINESS_LABEL}`, 1, BUSINESS_OPTIONS, { kind: 'required' }),
+                pick('afm-upper-2', '1.0 unit of AFM courses at the 300-level or above', 2, AFM_UPPER, { kind: 'required' }),
+              ],
+            },
+            {
+              id: 'afm-upper',
+              label: '1.5 units of AFM 300+',
+              slots: [
+                pick('business2', `2 of ${BUSINESS_LABEL}`, 2, BUSINESS_OPTIONS, { kind: 'required' }),
+                pick('afm-upper-3', '1.5 units of AFM courses at the 300-level or above', 3, AFM_UPPER, { kind: 'required' }),
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -131,7 +149,6 @@ const core: Program = {
   ],
   totals: [{ id: 'total', label: 'Total units', units: 20.25 }],
   notes: [
-    'Check manually: the calendar asks for either 1.0 unit of AFM at the 300-level or above plus CFM 401 (if CFM 401 was not used for the business options), or 1.5 units of AFM at the 300-level or above. Here 1.5 units from AFM 300+ and CFM 401 are always required, so a student who used CFM 401 for the business options may need only 1.0 unit of AFM.',
     'Co-op only; Sequence 1 (the calendar study/work chart) is the recommended sequence.',
     'Includes 2.0 units of free electives (counted in the 20.25-unit total).',
     'Only one course from any cross-listed set may be used.',

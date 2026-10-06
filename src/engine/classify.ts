@@ -13,7 +13,7 @@ import type { Plan } from '@/domain/plan'
 import { MAJORS } from '@/requirements/majors'
 import type { Slot } from '@/domain/requirements'
 import type { Course, CourseCode, Requisite } from '@/domain/types'
-import { type DepthResult, effectiveSlots, feasible, solveFlow } from './allocate'
+import { type DepthResult, feasible, programVariants, solveFlow } from './allocate'
 import { type AuditResult, activePrograms } from './audit'
 import { type CatalogIndex, collectCourses, countsTowardDegree, expandSet, numericPart } from './catalog'
 import { programAllows } from './requisites'
@@ -94,11 +94,21 @@ export function classify(plan: Plan, audit: AuditResult, idx: CatalogIndex): Cla
 
   for (const pa of audit.programs) {
     const program = pa.program
-    const slots = effectiveSlots(program, program.kind === 'core' ? overrides : [])
-    const unmet = pa.allocation.slots.filter((s) => !s.satisfied).map((s) => s.slot.id)
+    const variants = programVariants(program, program.kind === 'core' ? overrides : [])
+    const allSlots = [...new Map(variants.flatMap((v) => v.slots).map((s) => [s.id, s])).values()]
+    // Slots of an option are alternatives: never 'required', and every option of an unmet choice is open.
+    const optionSlots = new Set(
+      program.sections.flatMap((s) => s.choices ?? []).flatMap((c) => c.options.flatMap((o) => o.slots.map((x) => x.id))),
+    )
+    const unmet = new Set([
+      ...pa.allocation.slots.filter((s) => !s.satisfied).map((s) => s.slot.id),
+      ...pa.allocation.choices
+        .filter((c) => !c.satisfied)
+        .flatMap((c) => c.choice.options.filter((o) => o !== c.option).flatMap((o) => o.slots.map((s) => s.id))),
+    ])
     const depth = pa.allocation.depth
     if (depth && !depth.satisfied) markDepthCandidates(depth, program.id, program.shortName, usable, availableSet, byCode, idx)
-    if (unmet.length === 0 && pa.allocation.floors.every((f) => f.satisfied)) continue
+    if (unmet.size === 0 && pa.allocation.floors.every((f) => f.satisfied)) continue
 
     const ref = (slot: Slot): SlotRef => ({
       programId: program.id,
@@ -108,20 +118,20 @@ export function classify(plan: Plan, audit: AuditResult, idx: CatalogIndex): Cla
     })
 
     // Candidates: available courses that fit an unmet slot of this program.
-    for (const slot of slots) {
-      if (!unmet.includes(slot.id)) continue
+    for (const slot of allSlots) {
+      if (!unmet.has(slot.id)) continue
       for (const code of expandSet(slot.from, idx)) {
         const cl = byCode.get(code)
         if (!cl || !availableSet.has(code)) continue
         cl.slots.push(ref(slot))
-        const rank = slot.kind === 'required' ? 'required' : 'counts'
+        const rank = slot.kind === 'required' && !optionSlots.has(slot.id) ? 'required' : 'counts'
         if (cl.status === 'free' || (cl.status === 'counts' && rank === 'required')) cl.status = rank
       }
     }
     // Unmet level floors make higher-level pool courses count toward the floor.
     for (const fr of pa.allocation.floors) {
       if (fr.satisfied) continue
-      const absorbing = slots.find((s) => s.id === fr.floor.absorbingSlot)
+      const absorbing = allSlots.find((s) => s.id === fr.floor.absorbingSlot)
       if (!absorbing) continue
       for (const code of expandSet(absorbing.from, idx)) {
         const cl = byCode.get(code)
@@ -132,22 +142,27 @@ export function classify(plan: Plan, audit: AuditResult, idx: CatalogIndex): Cla
       }
     }
 
-    // Essential courses: removing them makes the program infeasible.
-    const candidates = available.filter((code) => slots.some((s) => expandSet(s.from, idx).has(code)))
+    // Essential courses: without them no choice combination can be completed.
+    const candidates = available.filter((code) => allSlots.some((s) => expandSet(s.from, idx).has(code)))
     const universe = [...usable, ...candidates]
-    if (!feasible(slots, universe, idx)) {
+    const open = variants.filter((v) => feasible(v.slots, universe, idx))
+    if (open.length === 0) {
       impossible.push({ programId: program.id, programName: program.shortName })
       continue
     }
-    const { edges, graph } = solveFlow(slots, universe, idx)
-    const used = new Set(edges.filter((e) => graph.flowOn(e.edge) > 0).map((e) => e.course))
+    // A course unused by some feasible variant's flow cannot be essential.
+    const usedSets = open.map((v) => {
+      const { edges, graph } = solveFlow(v.slots, universe, idx)
+      return new Set(edges.filter((e) => graph.flowOn(e.edge) > 0).map((e) => e.course))
+    })
     for (const code of candidates) {
-      if (!used.has(code)) continue
-      if (feasible(slots, universe.filter((c) => c !== code), idx)) continue
+      if (!usedSets.every((used) => used.has(code))) continue
+      const without = universe.filter((c) => c !== code)
+      if (open.some((v) => feasible(v.slots, without, idx))) continue
       const cl = byCode.get(code)
       if (!cl) continue
       cl.status = 'must'
-      const slotLabels = slots.filter((s) => expandSet(s.from, idx).has(code)).map((s) => s.label)
+      const slotLabels = allSlots.filter((s) => expandSet(s.from, idx).has(code)).map((s) => s.label)
       cl.reasons.push(`${program.shortName}: no alternative for ${slotLabels.join(' / ')}`)
     }
   }

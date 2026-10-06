@@ -1,4 +1,12 @@
-export { type Allocation, type DepthResult, type SlotAllocation, allocate, effectiveSlots } from './allocate'
+export {
+  type Allocation,
+  type ChoiceResult,
+  type DepthResult,
+  type SlotAllocation,
+  allocate,
+  programVariants,
+  sectionSlots,
+} from './allocate'
 export { type AuditResult, type ProgramAudit, type TotalResult, activePrograms, auditPlan } from './audit'
 export {
   type CatalogIndex,

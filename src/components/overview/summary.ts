@@ -1,5 +1,6 @@
 import { formatUnits } from '@/components/audit/units'
 import type { AuditResult, DepthResult, ProgramAudit } from '@/engine'
+import { sectionSlots } from '@/engine'
 import type { Analysis } from '@/lib/data'
 
 export interface SummaryRow {
@@ -18,8 +19,8 @@ export interface SummaryRow {
 const coreOf = (audit: AuditResult) => audit.programs.find((p) => p.program.id === 'core')
 
 function sectionProgress(pa: ProgramAudit | undefined, sectionId: string) {
-  const ids = new Set(pa?.program.sections.find((s) => s.id === sectionId)?.slots.map((s) => s.id))
-  const slots = pa?.allocation.slots.filter((s) => ids.has(s.slot.id)) ?? []
+  const section = pa?.program.sections.find((s) => s.id === sectionId)
+  const slots = pa && section ? sectionSlots(section, pa.allocation) : []
   return {
     have: slots.reduce((s, x) => s + x.filled, 0),
     need: slots.reduce((s, x) => s + x.slot.units, 0),

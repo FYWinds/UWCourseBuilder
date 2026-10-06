@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { Plan } from '@/domain/plan'
+import type { Program } from '@/domain/requirements'
 import type { Catalog } from '@/domain/types'
+import { oneOf } from '@/requirements/helpers'
 import { normalizePlan, parsePlanJson } from '@/store/plan'
-import { type CatalogIndex, auditPlan, buildIndex, classify, detectMajor, placementKey, validatePlan } from './index'
+import { type CatalogIndex, allocate, auditPlan, buildIndex, classify, detectMajor, placementKey, validatePlan } from './index'
 
 let idx: CatalogIndex
 beforeAll(() => {
@@ -170,6 +172,62 @@ describe('breadth & depth rule (2025/26 and earlier)', () => {
     const r = classify(p, auditPlan(p, idx), idx).byCode
     expect(r.get('PHYS256')?.slots.some((s) => s.slotId === 'depth')).toBe(true)
     expect(r.get('PSYCH312')?.slots.some((s) => s.slotId === 'depth')).toBe(false)
+  })
+})
+
+describe('choices between course groups', () => {
+  const program: Program = {
+    id: 'core',
+    kind: 'core',
+    name: 'Test',
+    shortName: 'Test',
+    calendarUrl: '',
+    sections: [
+      {
+        id: 'analysis',
+        label: 'Analysis',
+        slots: [oneOf('stat230', ['STAT230'])],
+        choices: [
+          {
+            id: 'calc',
+            label: 'Calculus path',
+            options: [
+              { id: 'adv', label: 'MATH 247', slots: [oneOf('math247', ['MATH247'])] },
+              { id: 'reg', label: 'MATH 237 and PMATH 333', slots: [oneOf('math237', ['MATH237']), oneOf('pmath333', ['PMATH333'])] },
+            ],
+          },
+        ],
+      },
+    ],
+  }
+
+  it('counts whichever option is complete', () => {
+    const a = allocate(program, ['STAT230', 'MATH237', 'PMATH333'], idx)
+    expect(a.satisfied).toBe(true)
+    expect(a.choices.map((c) => [c.option.id, c.satisfied])).toEqual([['reg', true]])
+    expect(allocate(program, ['STAT230', 'MATH247'], idx).choices[0]).toMatchObject({ satisfied: true, option: { id: 'adv' } })
+  })
+
+  it('stays unmet while no single option is complete', () => {
+    const a = allocate(program, ['STAT230', 'MATH237'], idx)
+    expect(a.satisfied).toBe(false)
+    expect(a.deficit).toBe(0.5)
+  })
+
+  it('lets one course meet List A and every option of a choice (Mathematical Finance)', () => {
+    const p = plan({ major: 'mathfin', breadthRule: undefined, placements: { t0: ['MATH237', 'PMATH333'] } })
+    const core = auditPlan(p, idx).programs.find((x) => x.program.id === 'core')!
+    expect(core.allocation.choices.find((c) => c.choice.id === 'calculus-3')).toMatchObject({
+      satisfied: true,
+      option: { id: 'math237-pmath333' },
+    })
+  })
+
+  it('treats options as alternatives, not as must-take courses', () => {
+    const p = plan({ major: 'mathfin', breadthRule: undefined, placements: {} })
+    const r = classify(p, auditPlan(p, idx), idx).byCode
+    expect(r.get('MATH247')?.status).toBe('counts')
+    expect(r.get('PMATH333')?.status).toBe('counts')
   })
 })
 

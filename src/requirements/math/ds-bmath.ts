@@ -2,16 +2,33 @@
  * Data Science (Bachelor of Mathematics - Honours).
  * Drafted by scripts/gen-program.ts from Kuali HymD11R0j3, then reviewed against the calendar.
  */
-import type { Major } from '@/domain/requirements'
+import type { Choice, Major } from '@/domain/requirements'
 import { bmathMajor } from '../bmath'
 import { oneOf, pick } from '../helpers'
 
-/** "2 of" these course pairs: a first course from `first` with a second from `second`. */
+/** "Complete 2 of" these course pairs: a first course from `first` with a second from `second`. */
 const PAIRS = [
-  { first: ['AMATH242', 'CS335', 'CS370', 'CS371'], second: ['AMATH449', 'CS479'], label: 'AMATH 242 / CS 335 / 370 / 371 with AMATH 449 / CS 479' },
-  { first: ['STAT330'], second: ['STAT431', 'STAT440'], label: 'STAT 330 with STAT 431 / 440' },
-  { first: ['STAT332'], second: ['STAT430', 'STAT454'], label: 'STAT 332 with STAT 430 / 454' },
+  { id: 'computing', label: 'Computing', first: ['AMATH242', 'CS335', 'CS370', 'CS371'], second: ['AMATH449', 'CS479'] },
+  { id: 'stat330', label: 'STAT 330', first: ['STAT330'], second: ['STAT431', 'STAT440'] },
+  { id: 'stat332', label: 'STAT 332', first: ['STAT332'], second: ['STAT430', 'STAT454'], note: 'Some business-related plans may substitute STAT 372 for STAT 332.' },
 ]
+
+const PAIR_CHOICE: Choice = {
+  id: 'pairs',
+  label: '2 course pairs',
+  options: [[0, 1], [0, 2], [1, 2]].map((picked) => {
+    const pairs = picked.map((i) => PAIRS[i])
+    const id = pairs.map((p) => p.id).join('-')
+    return {
+      id,
+      label: `${pairs[0].label} and ${pairs[1].label} pairs`,
+      slots: pairs.flatMap((p) => [
+        oneOf(`${id}-${p.id}-first`, p.first, 0.5, p.note),
+        oneOf(`${id}-${p.id}-second`, p.second),
+      ]),
+    }
+  }),
+}
 
 export const major: Major = bmathMajor({
   id: 'ds-bmath',
@@ -48,24 +65,11 @@ export const major: Major = bmathMajor({
         pick('learning', '2 of AMATH 445, STAT 441 / 443 / 444', 2, {
           list: ['AMATH445', 'STAT441', 'STAT443', 'STAT444'],
         }, { kind: 'required' }),
-        pick('pairs-first', 'First courses of 2 pairs: AMATH 242 / CS 335 / 370 / 371, STAT 330, STAT 332', 2, {
-          list: PAIRS.flatMap((p) => p.first),
-        }, {
-          kind: 'required',
-          maxFrom: [{ set: { list: PAIRS[0].first }, max: 1, label: 'At most one of AMATH 242 / CS 335 / 370 / 371' }],
-          note: 'STAT 332: some business-related plans may substitute STAT 372. STAT 334 is not an acceptable substitute for STAT 330.',
-        }),
-        pick('pairs-second', 'Second courses of the same 2 pairs: AMATH 449 / CS 479, STAT 431 / 440, STAT 430 / 454', 2, {
-          list: PAIRS.flatMap((p) => p.second),
-        }, {
-          kind: 'required',
-          maxFrom: PAIRS.map((p) => ({ set: { list: p.second }, max: 1, label: `At most one of ${p.second.join(' / ')}` })),
-        }),
       ],
+      choices: [PAIR_CHOICE],
     },
   ],
   notes: [
-    `Check manually: complete 2 of these pairs: ${PAIRS.map((p) => p.label).join('; ')}. The audit checks two first courses and two second courses but not that they come from the same two pairs.`,
     'Students may only complete one course from any cross-listed set, and no course may fulfil more than one requirement within the major.',
     'Students currently or previously in Business Administration and Mathematics double degree, Mathematics/Business Administration, Mathematics/Financial Analysis and Risk Management, Information Technology Management, or Mathematical Optimization – Business Specialization may substitute STAT 371 for STAT 331 and STAT 372 for STAT 332.',
     'STAT 334 is not an acceptable substitute for STAT 330; STAT 373 is not an acceptable substitute for STAT 331.',

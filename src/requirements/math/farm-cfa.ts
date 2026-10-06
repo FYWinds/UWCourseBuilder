@@ -2,7 +2,7 @@
  * Mathematics/Financial Analysis and Risk Management - Chartered Financial Analyst Specialization (Bachelor of Mathematics - Honours).
  * Drafted by scripts/gen-program.ts from Kuali SkgAy1R0jh, then reviewed against the calendar.
  */
-import type { CourseSet, Major } from '@/domain/requirements'
+import type { Choice, CourseSet, Major } from '@/domain/requirements'
 import { bmathMajor } from '../bmath'
 import { oneOf, pick } from '../helpers'
 import { MATH_COURSES, NON_MATH } from '../math-faculty'
@@ -14,6 +14,30 @@ const UPPER_MATH: CourseSet = {
 }
 
 const ANY_COURSE: CourseSet = { union: [MATH_COURSES, NON_MATH] }
+
+const STAT_PATHS: Choice = {
+  id: 'stat-path',
+  label: 'Statistics path',
+  options: [
+    {
+      id: 'stat330-333',
+      label: 'STAT 330 and STAT 333',
+      slots: [
+        oneOf('stat330', ['STAT330']),
+        oneOf('stat333', ['STAT333']),
+        pick('upper-math-1', '1 math course at the 300- or 400-level', 1, UPPER_MATH),
+      ],
+    },
+    {
+      id: 'stat334',
+      label: 'STAT 334',
+      slots: [
+        oneOf('stat334', ['STAT334']),
+        pick('upper-math-2', '2 math courses at the 300- or 400-level', 2, UPPER_MATH),
+      ],
+    },
+  ],
+}
 
 export const major: Major = bmathMajor({
   id: 'farm-cfa',
@@ -45,10 +69,8 @@ export const major: Major = bmathMajor({
         oneOf('co250', ['CO250', 'CO255']),
         oneOf('cs335', ['CS335', 'CS476']),
         oneOf('math237', ['MATH237', 'MATH247']),
-        oneOf('stat330-or-334', ['STAT330', 'STAT334']),
-        oneOf('stat333', ['STAT333']),
-        pick('upper-math', '1 math course at the 300- or 400-level', 1, UPPER_MATH),
       ],
+      choices: [STAT_PATHS],
     },
     {
       id: 'specialization',
@@ -69,6 +91,5 @@ export const major: Major = bmathMajor({
     'Check manually: the calendar does not say whether a course may count toward both the major and the specialization; here each course counts once.',
     'Check manually: the specialization rule "1.0 unit of additional courses" names no pool; any course is accepted here.',
     'Check manually: four academic trading milestones (virtual brokerage portfolio deliverables) are also required.',
-    'Check manually: the calendar requires either STAT 330, STAT 333 and 1 more 300- or 400-level math course, or STAT 334 and 2 more 300- or 400-level math courses (ACTSC, AMATH, CO, CS, MATBUS, MATH, PMATH, STAT). STAT 333 is required here on both paths.',
   ],
 })

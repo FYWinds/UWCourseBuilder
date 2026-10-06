@@ -38,13 +38,24 @@ export const major: Major = bmathMajor({
         oneOf('econ101', ['ECON101'], 0.5, 'Laurier ECON 120W is also accepted.'),
         oneOf('econ102', ['ECON102'], 0.5, 'Laurier ECON 140W is also accepted.'),
         oneOf('econ201', ['ECON201'], 0.5, 'Laurier ECON 260W is also accepted.'),
-        oneOf('calculus-3', ['MATH247', 'MATH237'], 0.5, 'MATH 237 must be paired with PMATH 333.'),
-        oneOf('pmath333', ['PMATH333'], 0.5, 'Only needed when MATH 237 is taken instead of MATH 247.'),
+      ],
+      choices: [
+        {
+          id: 'calculus-3',
+          label: 'Calculus 3',
+          options: [
+            { id: 'math247', label: 'MATH 247', slots: [oneOf('math247', ['MATH247'])] },
+            {
+              id: 'math237-pmath333',
+              label: 'MATH 237 and PMATH 333',
+              slots: [oneOf('math237', ['MATH237']), oneOf('pmath333', ['PMATH333'])],
+            },
+          ],
+        },
       ],
     },
   ],
   notes: [
-    'Check manually: the calendar requires MATH 247, or both MATH 237 and PMATH 333; PMATH 333 is listed as required here even if MATH 247 is taken.',
     'Laurier courses BUS 127W, BUS 247W, BUS 111W, ECON 120W, ECON 140W and ECON 260W may replace AFM 101, AFM 102, AFM 131, ECON 101, ECON 102 and ECON 201 respectively; they are not in the catalog and are not checked here.',
     'Students may only complete one course from any cross-listed set.',
     'Business Administration and Mathematics double degree students may substitute BUS 393W for ACTSC 372 and are exempt from STAT 443 (STAT 443 may then count toward the AMATH 353 / CO 372 / CS 476 / PMATH 453 requirement).',

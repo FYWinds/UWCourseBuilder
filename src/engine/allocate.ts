@@ -7,7 +7,7 @@
  * split; a mixed-unit pool (e.g. 0.25-unit labs in a breadth pool) may split a
  * course across slots — an accepted approximation.
  */
-import type { DepthRule, LevelFloor, Program, Slot } from '@/domain/requirements'
+import type { Choice, ChoiceOption, DepthRule, LevelFloor, Program, Section, Slot } from '@/domain/requirements'
 import type { CourseCode } from '@/domain/types'
 import { type CatalogIndex, collectCourses, countsTowardDegree, expandSet, numericPart } from './catalog'
 import { FlowGraph } from './flow'
@@ -40,10 +40,19 @@ export interface DepthResult {
   via?: 'upper' | 'chain'
 }
 
+export interface ChoiceResult {
+  choice: Choice
+  /** Option the audit counts: the one closest to complete (first on ties). */
+  option: ChoiceOption
+  satisfied: boolean
+}
+
 export interface Allocation {
+  /** Base slots plus the slots of each chosen option. */
   slots: SlotAllocation[]
   floors: FloorResult[]
   depth?: DepthResult
+  choices: ChoiceResult[]
   /** Course → slot id it was allocated to (largest share). */
   assignment: Map<CourseCode, string>
   /** Total units still missing across slots. */
@@ -51,9 +60,15 @@ export interface Allocation {
   satisfied: boolean
 }
 
-/** Program slots with specialization overrides applied (e.g. DHW adds ECE 222 to cs251). */
-export function effectiveSlots(program: Program, overrides: Program['coreOverrides'] = []): Slot[] {
-  const slots = program.sections.flatMap((s) => s.slots)
+/** Concrete requirement set: base slots plus one option per choice. */
+export interface Variant {
+  /** Choice id → option id. */
+  selection: Record<string, string>
+  slots: Slot[]
+}
+
+/** Slots with specialization overrides applied (e.g. DHW adds ECE 222 to cs251). */
+function withOverrides(slots: Slot[], overrides: NonNullable<Program['coreOverrides']>): Slot[] {
   if (!overrides.length) return slots
   return slots.map((slot) => {
     const add = overrides.filter((o) => o.slot === slot.id)
@@ -65,6 +80,29 @@ export function effectiveSlots(program: Program, overrides: Program['coreOverrid
       note: [slot.note, ...add.map((o) => o.note)].filter(Boolean).join(' '),
     }
   })
+}
+
+/** Every combination of choice options (one variant when the program has no choices). */
+export function programVariants(program: Program, overrides: Program['coreOverrides'] = []): Variant[] {
+  let variants: Variant[] = [{ selection: {}, slots: withOverrides(program.sections.flatMap((s) => s.slots), overrides) }]
+  for (const choice of program.sections.flatMap((s) => s.choices ?? [])) {
+    variants = variants.flatMap((v) =>
+      choice.options.map((o) => ({
+        selection: { ...v.selection, [choice.id]: o.id },
+        slots: [...v.slots, ...withOverrides(o.slots, overrides)],
+      })),
+    )
+  }
+  return variants
+}
+
+/** Allocations of a section: its own slots, then the chosen option's slots of each choice. */
+export function sectionSlots(section: Section, allocation: Allocation): SlotAllocation[] {
+  const chosen = new Set(
+    allocation.choices.filter((c) => section.choices?.includes(c.choice)).flatMap((c) => c.option.slots.map((s) => s.id)),
+  )
+  const own = new Set(section.slots.map((s) => s.id))
+  return allocation.slots.filter((sa) => own.has(sa.slot.id) || chosen.has(sa.slot.id))
 }
 
 /** Max-flow allocation of `courses` to `slots`. Only flow totals; see `allocate` for floors. */
@@ -120,13 +158,20 @@ export function feasible(slots: Slot[], courses: CourseCode[], idx: CatalogIndex
   return filled.every((f, i) => f >= toHundredths(slots[i].units))
 }
 
+/** Allocate under every choice combination and keep the best: complete first, then the smallest deficit. */
 export function allocate(
   program: Program,
   courses: CourseCode[],
   idx: CatalogIndex,
   overrides: Program['coreOverrides'] = [],
 ): Allocation {
-  const slots = effectiveSlots(program, overrides)
+  return programVariants(program, overrides)
+    .map((v) => allocateVariant(program, v, courses, idx))
+    .reduce((best, a) => (a.satisfied !== best.satisfied ? (a.satisfied ? a : best) : a.deficit < best.deficit - 1e-9 ? a : best))
+}
+
+function allocateVariant(program: Program, variant: Variant, courses: CourseCode[], idx: CatalogIndex): Allocation {
+  const { slots } = variant
   const { filled, edges, graph } = solveFlow(slots, courses, idx, true)
 
   // Each course goes to the slot receiving its largest share.
@@ -148,12 +193,18 @@ export function allocate(
     courses: [...assignment].filter(([, id]) => id === slot.id).map(([code]) => code),
     satisfied: filled[si] >= toHundredths(slot.units),
   }))
+  const satisfiedIds = new Set(slotResults.filter((r) => r.satisfied).map((r) => r.slot.id))
+  const choices = program.sections.flatMap((s) => s.choices ?? []).map((choice) => {
+    const option = choice.options.find((o) => o.id === variant.selection[choice.id]) ?? choice.options[0]
+    return { choice, option, satisfied: option.slots.every((s) => satisfiedIds.has(s.id)) }
+  })
   const deficit = slotResults.reduce((s, r) => s + Math.max(0, r.slot.units - r.filled), 0)
   const depth = program.depth && evaluateDepth(program.depth, courses, idx)
   return {
     slots: slotResults,
     floors,
     ...(depth && { depth }),
+    choices,
     assignment,
     deficit,
     satisfied: deficit === 0 && floors.every((f) => f.satisfied) && (depth?.satisfied ?? true),

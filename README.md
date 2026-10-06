@@ -48,7 +48,8 @@ shipped to the browser. The app uses hash routing, so any static host works.
 ## Caveats
 
 Unofficial planning aid — the Undergraduate Calendar and academic advisors take precedence. Grades, averages and
-free-text requisites are flagged for manual checking, not evaluated. Calendar rules the requirement model cannot
+free-text requisites are flagged for manual checking, not evaluated. "Complete one of these paths" rules are
+modelled as choices (the audit counts the path closest to complete); other rules the requirement model cannot
 express exactly are approximated and marked "Check manually" in the audit. Sharing one course between two
 specializations is allowed by the engine but not verified against the calendar. Problems can be reported from the
 bug icon in the header or on each audit card (GitHub issue forms: data, requirement, algorithm, UI, feature).

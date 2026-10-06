@@ -24,7 +24,7 @@ function listedCodes(set: CourseSet, out = new Set<string>()): Set<string> {
 function programCodes(program: Program): Set<string> {
   const out = new Set<string>()
   for (const section of program.sections) {
-    for (const slot of section.slots) {
+    for (const slot of [...section.slots, ...(section.choices ?? []).flatMap((c) => c.options.flatMap((o) => o.slots))]) {
       listedCodes(slot.from, out)
       slot.maxFrom?.forEach((m) => listedCodes(m.set, out))
     }

@@ -22,7 +22,7 @@ import type { Program, SpecId } from '@/domain/requirements'
 import type { CourseCode } from '@/domain/types'
 import { MAJORS } from '@/requirements/majors'
 import { SPECS } from '@/requirements/specs'
-import { effectiveSlots } from './allocate'
+import { programVariants } from './allocate'
 import { type CatalogIndex, expandSet } from './catalog'
 import { nextTermCode } from './terms'
 
@@ -263,7 +263,7 @@ export function defaultEquivalences(
   const overrides = programs.flatMap((p) => p.coreOverrides ?? [])
   const used = new Set(
     programs.flatMap((p) =>
-      effectiveSlots(p, p.kind === 'core' ? overrides : []).flatMap((s) => [...expandSet(s.from, idx)]),
+      programVariants(p, p.kind === 'core' ? overrides : []).flatMap((v) => v.slots.flatMap((s) => [...expandSet(s.from, idx)])),
     ),
   )
   return summary.equivalences.filter((e) => !used.has(e.from)).map((e) => e.from)

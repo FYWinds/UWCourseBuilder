@@ -49,10 +49,6 @@ export const major: Major = bmathMajor({
         oneOf('actsc291', ['ACTSC291', 'AFM272']),
         oneOf('actsc423', ['ACTSC423', 'AFM423']),
         oneOf('afm323', ['AFM323', 'STAT371', 'STAT374']),
-        pick('economics', 'COMM103 or ECON100, or both ECON101 and ECON102', 2, { list: ['COMM103', 'ECON100', 'ECON101', 'ECON102'] }, {
-          kind: 'required',
-          note: 'Check manually: complete one of COMM103 / ECON100, or both ECON101 and ECON102. Approximated as 1.0 unit from these courses, so COMM103 or ECON100 alone shows as incomplete.',
-        }),
         oneOf('cs115', ['CS115', 'CS135', 'CS145']),
         oneOf('cs116', ['CS116', 'CS136', 'CS146']),
         oneOf('math127', ['MATH127', 'MATH137', 'MATH147']),
@@ -63,6 +59,20 @@ export const major: Major = bmathMajor({
         oneOf('stat230', ['STAT230', 'STAT240']),
         oneOf('stat231', ['STAT231', 'STAT241']),
         pick('math-electives', '6 additional math courses (ACTSC, AMATH, CO, CS, MATBUS, MATH, PMATH, STAT)', 6, { subject: ['ACTSC', 'AMATH', 'CO', 'CS', 'MATBUS', 'MATH', 'PMATH', 'STAT'] }),
+      ],
+      choices: [
+        {
+          id: 'economics',
+          label: 'Economics',
+          options: [
+            { id: 'comm103-econ100', label: 'COMM 103 or ECON 100', slots: [oneOf('comm103', ['COMM103', 'ECON100'])] },
+            {
+              id: 'econ101-102',
+              label: 'ECON 101 and ECON 102',
+              slots: [oneOf('econ101', ['ECON101']), oneOf('econ102', ['ECON102'])],
+            },
+          ],
+        },
       ],
     },
   ],

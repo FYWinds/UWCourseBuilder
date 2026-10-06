@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { type Page, expect, test } from '@playwright/test'
 
 const PLAN = {
   state: {
@@ -28,8 +28,14 @@ test.beforeEach(async ({ page }) => {
   }, PLAN)
 })
 
+/** Opens a page and acknowledges the disclaimer shown on every load. */
+async function visit(page: Page, path: string) {
+  await page.goto(path)
+  await page.getByRole('button', { name: 'I understand' }).click()
+}
+
 test('overview lists must-take courses and specializations update the audit', async ({ page }) => {
-  await page.goto('/')
+  await visit(page, '/')
   await expect(page.getByRole('heading', { name: 'What you still must take' })).toBeVisible()
   await expect(page.getByText('CS 350').first()).toBeVisible()
 
@@ -39,7 +45,7 @@ test('overview lists must-take courses and specializations update the audit', as
 })
 
 test('course search opens the detail sheet with prerequisites', async ({ page }) => {
-  await page.goto('/')
+  await visit(page, '/')
   await page.getByRole('button', { name: 'Search courses' }).click()
   await page.getByPlaceholder(/Course code or title/).fill('cs 341')
   await page.keyboard.press('Enter')
@@ -50,7 +56,7 @@ test('course search opens the detail sheet with prerequisites', async ({ page })
 })
 
 test('planner flags a course placed before its prerequisites', async ({ page }) => {
-  await page.goto('/#/planner')
+  await visit(page, '/#/planner')
   await expect(page.getByRole('heading', { name: 'Term planner' })).toBeVisible()
   // CS 341 sits in the first work term without CS 240/245/MATH 239/STAT 230.
   await expect(page.getByText(/[1-9]\d* errors?/).first()).toBeVisible()

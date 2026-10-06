@@ -231,7 +231,7 @@ function ProgramLeaf({ req, programs }: { req: Extract<Requisite, { kind: 'progr
           allowed ? 'border-status-taken/50 text-status-taken' : 'border-destructive/50 text-destructive',
         )}
       >
-        {allowed ? 'BCS ✓' : req.mode === 'in' ? 'Other programs only' : 'Excludes your program'}
+        {allowed ? 'Your program ✓' : req.mode === 'in' ? 'Other programs only' : 'Excludes your program'}
       </Badge>
     </span>
   )

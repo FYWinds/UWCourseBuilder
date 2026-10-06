@@ -27,6 +27,7 @@ export {
   type TranscriptImportResult,
   type TranscriptSummary,
   defaultEquivalences,
+  detectMajor,
   detectSpecs,
   inferSequence,
   parseTranscript,

@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { Plan } from '@/domain/plan'
 import type { Catalog } from '@/domain/types'
-import { type CatalogIndex, auditPlan, buildIndex, classify, placementKey, validatePlan } from './index'
+import { normalizePlan, parsePlanJson } from '@/store/plan'
+import { type CatalogIndex, auditPlan, buildIndex, classify, detectMajor, placementKey, validatePlan } from './index'
 
 let idx: CatalogIndex
 beforeAll(() => {
@@ -28,7 +29,8 @@ const FULL: Record<string, string[]> = {
 
 function plan(overrides: Partial<Plan> = {}): Plan {
   return {
-    version: 1,
+    version: 2,
+    major: 'bcs',
     sequence: 'coop1',
     startTerm: '1259',
     specs: [],
@@ -168,6 +170,52 @@ describe('breadth & depth rule (2025/26 and earlier)', () => {
     const r = classify(p, auditPlan(p, idx), idx).byCode
     expect(r.get('PHYS256')?.slots.some((s) => s.slotId === 'depth')).toBe(true)
     expect(r.get('PSYCH312')?.slots.some((s) => s.slotId === 'depth')).toBe(false)
+  })
+})
+
+describe('Faculty of Mathematics majors', () => {
+  const LIST_A_COURSES = ['CS135', 'CS136', 'MATH135', 'MATH136', 'MATH137', 'MATH138', 'MATH235', 'STAT230', 'STAT231']
+  const stat = (placements: Record<string, string[]>) =>
+    plan({ major: 'stat', breadthRule: undefined, placements })
+
+  it('lets one course meet a List A requirement and a narrower major requirement', () => {
+    const a = auditPlan(stat({ t0: [...LIST_A_COURSES, 'MATH237'] }), idx)
+    const core = a.programs.find((p) => p.program.id === 'core')!
+    const listA = new Set(core.program.sections.find((s) => s.id === 'list-a')!.slots.map((s) => s.id))
+    expect(core.allocation.slots.filter((s) => listA.has(s.slot.id) && !s.satisfied)).toEqual([])
+    expect(core.allocation.slots.find((s) => s.slot.id === 'math237')?.satisfied).toBe(true)
+  })
+
+  it('counts ENGL 378 for both the Statistics major and the communication requirement', () => {
+    const a = auditPlan(stat({ t0: ['ENGL109', 'ENGL378'] }), idx)
+    const core = a.programs.find((p) => p.program.id === 'core')!
+    const communication = a.programs.find((p) => p.program.id === 'communication')!
+    expect(core.allocation.slots.find((s) => s.slot.id === 'engl378')?.courses).toEqual(['ENGL378'])
+    expect(communication.allocation.satisfied).toBe(true)
+  })
+
+  it('applies the 2026/27 calendar to non-BCS majors whatever the 1A term', () => {
+    const ids = (p: Plan) => auditPlan(p, idx).programs.map((x) => x.program.id)
+    expect(ids(plan({ major: 'stat', breadthRule: undefined, startTerm: '1239' }))).not.toContain('breadth')
+    expect(ids(plan({ breadthRule: undefined, startTerm: '1239' }))).toContain('breadth')
+  })
+
+  it('reads the major from the transcript program line', () => {
+    expect(detectMajor('Statistics, Honours, Co-operative Program', 'bcs')).toBe('stat')
+    expect(detectMajor('Computer Science/Artificial Intelligence Specialization, Honours', 'cs-bmath')).toBe('cs-bmath')
+    expect(detectMajor('Computer Science, Honours, Co-operative Program', 'stat')).toBe('bcs')
+    expect(detectMajor('Honours Science, Regular Program', 'stat')).toBeNull()
+  })
+})
+
+describe('stored plans', () => {
+  it('migrates version 1 plans to BCS and keeps settings valid for the major', () => {
+    const v1 = { version: 1, sequence: 'coop4', startTerm: '1239', specs: ['ai'], placements: { t0: ['CS135'] } }
+    expect(parsePlanJson(JSON.stringify(v1))).toMatchObject({ version: 2, major: 'bcs', sequence: 'coop4', specs: ['ai'] })
+    const cpa = normalizePlan({ ...v1, major: 'mathcpa', breadthRule: 'breadth-depth' } as Partial<Plan>)
+    expect(cpa).toMatchObject({ major: 'mathcpa', sequence: 'cpa', specs: [] })
+    expect(cpa.breadthRule).toBeUndefined()
+    expect(normalizePlan({ major: 'removed-major' }).major).toBe('bcs')
   })
 })
 

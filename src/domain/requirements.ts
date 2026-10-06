@@ -1,3 +1,4 @@
+import type { BreadthRule, SequenceId } from './plan'
 import type { CourseCode, Faculty } from './types'
 
 /** Declarative description of a set of courses. */
@@ -53,20 +54,23 @@ export interface Section {
   slots: Slot[]
 }
 
-export type ProgramKind = 'core' | 'breadth' | 'coop' | 'spec'
+/** core: the major (one allocation group); degree: degree-level group such as communication. */
+export type ProgramKind = 'core' | 'degree' | 'breadth' | 'coop' | 'spec'
 
 /**
- * "Depth": `units` in one subject from `from`, where either at least 0.5 unit is at
- * `upperLevel` or above, or `chainLength` courses form a prerequisite chain.
- * Not a slot: depth may reuse courses that already fill other requirements.
+ * "Depth" / "subject concentration": `units` in one subject from `from`, where either at
+ * least 0.5 unit is at `upperLevel` or above, or `chainLength` courses form a prerequisite
+ * chain (when set). Not a slot: it may reuse courses that already fill other requirements.
  */
 export interface DepthRule {
   id: string
+  /** Short name for hints and pickers ("Depth", "Subject concentration"). */
+  name: string
   label: string
   from: CourseSet
   units: number
   upperLevel: number
-  chainLength: number
+  chainLength: number | null
 }
 
 export type SpecId = 'ai' | 'bio' | 'bus' | 'cfa' | 'dhw' | 'gd' | 'hci' | 'se'
@@ -81,7 +85,8 @@ export interface Program {
   name: string
   shortName: string
   calendarUrl: string
-  checklistUrl: string
+  /** Official checklist PDF, when the department publishes one. */
+  checklistUrl?: string
   /** Program/specialization code as it appears in requisite "Enrolled in …" rules. */
   enrolmentCode?: string
   sections: Section[]
@@ -92,4 +97,41 @@ export interface Program {
   /** Changes this specialization makes to core slots (e.g. DHW: ECE 222 replaces CS 251). */
   coreOverrides?: { slot: string; add: CourseCode[]; note: string }[]
   notes?: string[]
+}
+
+export type DegreeId = 'bcs' | 'bmath' | 'bcfm'
+
+export const DEGREE_LABEL: Record<DegreeId, string> = {
+  bcs: 'Bachelor of Computer Science',
+  bmath: 'Bachelor of Mathematics',
+  bcfm: 'Bachelor of Computing and Financial Management',
+}
+
+/** An academic major (Honours plan) and the degree-level rules that come with it. */
+export interface Major {
+  /** Registry key stored in plans. */
+  id: string
+  /** Calendar title, e.g. "Statistics (Bachelor of Mathematics - Honours)". */
+  name: string
+  shortName: string
+  degree: DegreeId
+  /** Kuali program pid (calendar page, drift validation). */
+  pid: string
+  /** Program code used by "Enrolled in …" requisites, e.g. "H-Statistics". */
+  enrolmentCode: string
+  /** Further requisite tokens implied by the major ("Honours", "Faculty of Mathematics", …). */
+  requisiteTokens: string[]
+  /** Study/work sequences offered; the first is the default. */
+  sequences: SequenceId[]
+  /** Full-time study terms required, by system of study. */
+  fullTimeTerms: { coop: number; regular: number }
+  /** CS specializations that may be added to this major. */
+  specs: SpecId[]
+  /** Whether the 2025/26 Breadth & Depth rule can replace the Elective Requirement. */
+  breadthRuleChoice: boolean
+  /** Allocation groups other than co-op and specializations, core first. */
+  programs: (rule: BreadthRule) => Program[]
+  /** Communication List 1 courses (the first must be completed before 2A); empty when not applicable. */
+  list1: (rule: BreadthRule) => CourseCode[]
+  coop: Program
 }

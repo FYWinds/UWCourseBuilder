@@ -10,12 +10,13 @@
  * promoted to `must` with `prereqFor` set.
  */
 import type { Plan } from '@/domain/plan'
+import { MAJORS } from '@/requirements/majors'
 import type { Slot } from '@/domain/requirements'
 import type { Course, CourseCode, Requisite } from '@/domain/types'
 import { type DepthResult, effectiveSlots, feasible, solveFlow } from './allocate'
 import { type AuditResult, activePrograms } from './audit'
 import { type CatalogIndex, collectCourses, countsTowardDegree, expandSet, numericPart } from './catalog'
-import { programAllows, studentPrograms } from './requisites'
+import { programAllows } from './requisites'
 
 export type CourseStatus = 'taken' | 'planned' | 'blocked' | 'must' | 'required' | 'counts' | 'free'
 
@@ -46,7 +47,8 @@ export const STATUS_ORDER: CourseStatus[] = ['must', 'required', 'counts', 'plan
 
 export function enrolmentTokens(plan: Plan): Set<string> {
   const codes = activePrograms(plan).flatMap((p) => (p.enrolmentCode ? [p.enrolmentCode] : []))
-  return studentPrograms(codes)
+  const major = MAJORS[plan.major]
+  return new Set([major.enrolmentCode, ...major.requisiteTokens, ...codes])
 }
 
 function blockReason(c: Course, placed: Set<CourseCode>, idx: CatalogIndex, programs: Set<string>): string | null {
@@ -188,9 +190,10 @@ function markDepthCandidates(
     const cl = byCode.get(c.code)
     if (!have || !cl || !available.has(c.code) || !pool.has(c.code)) continue
     const upper = numericPart(c.number) >= depth.rule.upperLevel
-    const extendsChain = [...collectCourses(c.prereq, new Set())].some((p) => have.has(p))
+    const extendsChain =
+      depth.rule.chainLength !== null && [...collectCourses(c.prereq, new Set())].some((p) => have.has(p))
     if (!upper && !extendsChain) continue
-    cl.slots.push({ programId, programName, slotId: depth.rule.id, slotLabel: `Depth in ${c.subject}` })
+    cl.slots.push({ programId, programName, slotId: depth.rule.id, slotLabel: `${depth.rule.name} in ${c.subject}` })
     if (cl.status === 'free') cl.status = 'counts'
   }
 }

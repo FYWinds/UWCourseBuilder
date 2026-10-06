@@ -15,16 +15,27 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SEQUENCES, type SequenceId, TRANSFER_TERM_ID } from '@/domain/plan'
+import type { SequenceId } from '@/domain/plan'
+import { SEQUENCES, TRANSFER_TERM_ID } from '@/domain/plan'
 import type { SpecId } from '@/domain/requirements'
+import { DEGREE_LABEL } from '@/domain/requirements'
 import {
   type TranscriptImportResult,
   type TranscriptSummary,
   activePrograms,
   buildTerms,
   defaultEquivalences,
+  detectMajor,
   detectSpecs,
   formatCode,
   inferSequence,
@@ -35,11 +46,13 @@ import {
 import { useCatalog } from '@/lib/data'
 import { pdfToText } from '@/lib/pdfText'
 import { cn } from '@/lib/utils'
-import { SPECS, SPEC_IDS } from '@/requirements/specs'
+import { MAJORS, MAJORS_BY_DEGREE } from '@/requirements/majors'
+import { SPECS } from '@/requirements/specs'
 import { usePlanStore } from '@/store/plan'
 
 interface Parsed {
   summary: TranscriptSummary
+  major: string
   sequence: SequenceId
   specs: SpecId[]
   equivalences: string[]
@@ -63,14 +76,19 @@ export function TranscriptImport() {
       setError('No terms found. Use the Unofficial Transcript or Unofficial Grade Report PDF from Quest.')
       return
     }
-    const sequence = inferSequence(summary, plan.sequence)
-    const specs = [...new Set([...plan.specs, ...detectSpecs(summary.program)])]
+    const major = MAJORS[detectMajor(summary.program, plan.major) ?? plan.major]
+    const fallback = major.sequences.includes(plan.sequence) ? plan.sequence : major.sequences[0]
+    const sequence = inferSequence(summary, fallback, major.sequences)
+    const specs = [
+      ...new Set([...plan.specs.filter((s) => major.specs.includes(s)), ...detectSpecs(summary.program, major.specs)]),
+    ]
     setError(null)
     setParsed({
       summary,
+      major: major.id,
       sequence,
       specs,
-      equivalences: defaultEquivalences(summary, activePrograms({ ...plan, sequence, specs }), idx),
+      equivalences: defaultEquivalences(summary, activePrograms({ ...plan, major: major.id, sequence, specs }), idx),
     })
   }
 
@@ -90,6 +108,7 @@ export function TranscriptImport() {
     () =>
       parsed &&
       planFromTranscript(plan, parsed.summary, idx, {
+        major: parsed.major,
         sequence: parsed.sequence,
         specs: parsed.specs,
         equivalences: parsed.equivalences,
@@ -225,23 +244,51 @@ function Preview({
 }) {
   const terms = buildTerms({ sequence: parsed.sequence, startTerm })
   const statusByCode = new Map(result.placed.map((p) => [p.code, p.status]))
+  const major = MAJORS[parsed.major]
   const columns = [
     { id: TRANSFER_TERM_ID, label: 'Transfer', name: 'AP / IB / transfer credit' },
     ...terms.map((t) => ({ id: t.id, label: t.label, name: t.name })),
   ].filter((c) => result.plan.placements[c.id]?.length)
+
+  const changeMajor = (id: string) => {
+    const next = MAJORS[id]
+    onChange({
+      major: id,
+      sequence: next.sequences.includes(parsed.sequence) ? parsed.sequence : next.sequences[0],
+      specs: parsed.specs.filter((s) => next.specs.includes(s)),
+    })
+  }
 
   return (
     <div className="-mr-3 min-h-0 flex-1 overflow-y-auto pr-3">
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Study / work sequence</Label>
+            <Label className="text-xs text-muted-foreground">Major</Label>
+            <Select value={parsed.major} onValueChange={changeMajor}>
+              <SelectTrigger className="w-full" title={major.name}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MAJORS_BY_DEGREE.filter((g) => g.majors.length > 0).map((g) => (
+                  <SelectGroup key={g.degree}>
+                    <SelectLabel>{DEGREE_LABEL[g.degree]}</SelectLabel>
+                    {g.majors.map((m) => (
+                      <SelectItem key={m.id} value={m.id} title={m.name}>
+                        {m.shortName}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+            <Label className="pt-1 text-xs text-muted-foreground">Study / work sequence</Label>
             <Select value={parsed.sequence} onValueChange={(v) => onChange({ sequence: v as SequenceId })}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(SEQUENCES) as SequenceId[]).map((id) => (
+                {major.sequences.map((id) => (
                   <SelectItem key={id} value={id}>
                     {SEQUENCES[id].label}
                   </SelectItem>
@@ -258,22 +305,24 @@ function Preview({
           </div>
         </div>
 
-        <fieldset className="space-y-1.5">
-          <legend className="text-xs text-muted-foreground">Specializations</legend>
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-            {SPEC_IDS.map((id) => (
-              <label key={id} className="flex items-center gap-1.5 text-sm">
-                <Checkbox
-                  checked={parsed.specs.includes(id)}
-                  onCheckedChange={(c) =>
-                    onChange({ specs: c ? [...parsed.specs, id] : parsed.specs.filter((s) => s !== id) })
-                  }
-                />
-                {SPECS[id].shortName}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        {major.specs.length > 0 && (
+          <fieldset className="space-y-1.5">
+            <legend className="text-xs text-muted-foreground">Specializations</legend>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {major.specs.map((id) => (
+                <label key={id} className="flex items-center gap-1.5 text-sm">
+                  <Checkbox
+                    checked={parsed.specs.includes(id)}
+                    onCheckedChange={(c) =>
+                      onChange({ specs: c ? [...parsed.specs, id] : parsed.specs.filter((s) => s !== id) })
+                    }
+                  />
+                  {SPECS[id].shortName}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         {parsed.summary.equivalences.length > 0 && (
           <fieldset className="space-y-1.5">

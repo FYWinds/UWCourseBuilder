@@ -1,8 +1,8 @@
 import type { Plan, PlanTerm } from '@/domain/plan'
-import { SEQUENCES, resolveBreadthRule } from '@/domain/plan'
+import { SEQUENCES } from '@/domain/plan'
 import type { Program } from '@/domain/requirements'
 import type { CourseCode } from '@/domain/types'
-import { coopProgram, corePrograms } from '@/requirements/bcs'
+import { MAJORS, resolveBreadthRule } from '@/requirements/majors'
 import { SPECS } from '@/requirements/specs'
 import { type Allocation, allocate } from './allocate'
 import { type CatalogIndex, countsTowardDegree, expandSet } from './catalog'
@@ -36,9 +36,10 @@ export interface AuditResult {
 
 /** Programs that apply to this plan, core first. */
 export function activePrograms(plan: Plan): Program[] {
+  const major = MAJORS[plan.major]
   return [
-    ...corePrograms(resolveBreadthRule(plan)),
-    ...(SEQUENCES[plan.sequence].coop ? [coopProgram] : []),
+    ...major.programs(resolveBreadthRule(plan)),
+    ...(SEQUENCES[plan.sequence].coop ? [major.coop] : []),
     ...plan.specs.map((id) => SPECS[id]),
   ]
 }
@@ -113,7 +114,7 @@ export function auditPlan(
     const units = codes.reduce((s, code) => s + (idx.byCode.get(code)?.units ?? 0), 0)
     return codes.length >= 3 && units >= 1.5
   }).length
-  const fullTimeTerms = { have: fullTime, need: coop ? 8 : 7 }
+  const fullTimeTerms = { have: fullTime, need: MAJORS[plan.major].fullTimeTerms[coop ? 'coop' : 'regular'] }
 
   return {
     terms,

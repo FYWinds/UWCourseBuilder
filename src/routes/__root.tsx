@@ -1,5 +1,5 @@
 import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
-import { GraduationCap, Monitor, Moon, Sun } from 'lucide-react'
+import { Bug, GraduationCap, Monitor, Moon, Sun } from 'lucide-react'
 import { Suspense } from 'react'
 import { DisclaimerDialog } from '@/components/DisclaimerDialog'
 import { CommandSearch } from '@/components/course/CommandSearch'
@@ -16,6 +16,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useCatalog } from '@/lib/data'
+import { ISSUE_CHOOSER_URL, REPO_URL } from '@/lib/repo'
+import { MAJORS } from '@/requirements/majors'
+import { usePlanStore } from '@/store/plan'
 import { type ThemeMode, useResolvedTheme, useThemeStore } from '@/store/theme'
 
 interface RootSearch {
@@ -39,16 +42,20 @@ const NAV = [
 
 function RootLayout() {
   const { course } = Route.useSearch()
+  const major = usePlanStore((s) => MAJORS[s.plan.major])
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex min-h-svh flex-col">
         <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
           <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4">
-            <Link to="/" className="flex items-center gap-2">
+            <Link to="/" className="flex shrink-0 items-center gap-2">
               <GraduationCap className="size-5 text-primary" aria-hidden />
-              <span className="font-serif text-lg font-semibold tracking-tight">UW Course Builder</span>
-              <span className="hidden rounded-full border px-2 py-0.5 text-xs text-muted-foreground md:inline">
-                BCS · 2026/27
+              <span className="font-serif text-lg font-semibold tracking-tight whitespace-nowrap">UW Course Builder</span>
+              <span
+                className="hidden max-w-48 truncate rounded-full border px-2 py-0.5 text-xs text-muted-foreground lg:inline"
+                title={major.name}
+              >
+                {major.shortName} · 2026/27
               </span>
             </Link>
             <nav className="flex items-center gap-1 overflow-x-auto text-sm">
@@ -68,6 +75,11 @@ function RootLayout() {
               <Suspense fallback={null}>
                 <CommandSearch />
               </Suspense>
+              <Button variant="ghost" size="icon-sm" asChild>
+                <a href={ISSUE_CHOOSER_URL} target="_blank" rel="noreferrer" aria-label="Report a problem" title="Report a problem">
+                  <Bug />
+                </a>
+              </Button>
               <Button variant="ghost" size="icon-sm" asChild>
                 <a href={REPO_URL} target="_blank" rel="noreferrer" aria-label="GitHub repository" title="GitHub repository">
                   <GitHubMark />
@@ -94,8 +106,6 @@ function RootLayout() {
     </TooltipProvider>
   )
 }
-
-const REPO_URL = 'https://github.com/FYWinds/UWCourseBuilder'
 
 /** GitHub's mark (lucide no longer ships brand icons). */
 function GitHubMark() {

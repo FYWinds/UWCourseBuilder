@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, ExternalLink } from 'lucide-react'
+import { Bug, CheckCircle2, Circle, ExternalLink } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import type { CourseCode } from '@/domain/types'
 import type { CatalogIndex, ClassifyResult, ProgramAudit, SlotAllocation } from '@/engine'
 import { depthHint } from '@/components/overview/summary'
+import { issueUrl } from '@/lib/repo'
 import { cn } from '@/lib/utils'
 import { CourseChip } from './CourseChip'
 import { LinkedText } from './LinkedText'
@@ -134,10 +135,23 @@ export function ProgramCard({ audit: pa, takenAudit, placedStatus, classificatio
               <ExternalLink />
             </a>
           </Button>
-          <Button asChild variant="ghost" size="sm" className="print:hidden">
-            <a href={program.checklistUrl} target="_blank" rel="noreferrer">
-              Checklist
-              <ExternalLink />
+          {program.checklistUrl && (
+            <Button asChild variant="ghost" size="sm" className="print:hidden">
+              <a href={program.checklistUrl} target="_blank" rel="noreferrer">
+                Checklist
+                <ExternalLink />
+              </a>
+            </Button>
+          )}
+          <Button asChild variant="ghost" size="icon-sm" className="print:hidden">
+            <a
+              href={issueUrl('requirement-error', { program: program.name, calendar: program.calendarUrl })}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Report a problem with ${program.name}`}
+              title="Report a problem with these requirements"
+            >
+              <Bug />
             </a>
           </Button>
         </CardAction>
@@ -198,7 +212,7 @@ export function ProgramCard({ audit: pa, takenAudit, placedStatus, classificatio
                   action={
                     !allocation.depth.satisfied && (
                       <SlotOptions
-                        target={{ programId: program.id, ruleId: allocation.depth.rule.id, label: 'Depth' }}
+                        target={{ programId: program.id, ruleId: allocation.depth.rule.id, label: allocation.depth.rule.name }}
                         classification={classification}
                         idx={idx}
                       />

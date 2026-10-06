@@ -11,19 +11,8 @@ export interface RequisiteContext {
   same: Set<CourseCode>
   /** Student's level in the term; null when unknown (e.g. transfer credit). */
   level: TermLevel | null
-  /** Program tokens the student is enrolled in (see `studentPrograms`). */
+  /** Program tokens the student is enrolled in (see `enrolmentTokens`). */
   programs: Set<string>
-}
-
-/** Tokens matched against "Enrolled in …" rules for a BCS student. */
-export function studentPrograms(enrolmentCodes: string[]): Set<string> {
-  return new Set([
-    'H-Computer Science (BCS)',
-    'Honours',
-    'Honours Mathematics',
-    'Faculty of Mathematics',
-    ...enrolmentCodes,
-  ])
 }
 
 function hasCourse(code: CourseCode, set: Set<CourseCode>, idx: CatalogIndex): boolean {

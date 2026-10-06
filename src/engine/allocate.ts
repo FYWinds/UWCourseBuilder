@@ -210,7 +210,7 @@ export function evaluateDepth(rule: DepthRule, courses: CourseCode[], idx: Catal
       if (unitsOf(upper) >= 0.5 - 1e-9) {
         return { rule, satisfied: true, subject, courses: codes, units: rule.units, via: 'upper' }
       }
-      if (chain.length >= rule.chainLength) {
+      if (rule.chainLength !== null && chain.length >= rule.chainLength) {
         return { rule, satisfied: true, subject, courses: chain, units: rule.units, via: 'chain' }
       }
     }

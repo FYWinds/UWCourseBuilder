@@ -6,7 +6,8 @@
  * Usage: pnpm data:kuali [--refresh]
  */
 import { cachedJson, fetchJson, pool, progress } from './lib/http.ts'
-import { KUALI_BASE, KUALI_CATALOG_ID, PROGRAM_PIDS, RAW_DIR } from './lib/config.ts'
+import { KUALI_BASE, KUALI_CATALOG_ID, RAW_DIR } from './lib/config.ts'
+import { calendarChecks } from './lib/programs.ts'
 
 const refresh = process.argv.includes('--refresh')
 const dir = `${RAW_DIR}/kuali`
@@ -43,14 +44,15 @@ async function main() {
     progress('course details'),
   )
 
-  for (const [key, pid] of Object.entries(PROGRAM_PIDS)) {
-    await cachedJson(
-      `${dir}/programs/${key}.json`,
-      () => fetchJson(`${KUALI_BASE}/program/${KUALI_CATALOG_ID}/${pid}`),
-      refresh,
-    )
-  }
-  console.log(`  ${Object.keys(PROGRAM_PIDS).length} programs cached`)
+  const pids = [...new Set(calendarChecks().map((c) => c.pid))]
+  await pool(
+    pids,
+    4,
+    (pid) =>
+      cachedJson(`${dir}/programs/${pid}.json`, () => fetchJson(`${KUALI_BASE}/program/${KUALI_CATALOG_ID}/${pid}`), refresh),
+    progress('program pages'),
+  )
+  console.log(`  ${pids.length} programs cached`)
 
   if (failures.length) {
     console.error(`${failures.length} course fetches failed:\n${failures.join('\n')}`)

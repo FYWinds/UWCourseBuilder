@@ -4,6 +4,7 @@ import { PlanSettingsCard } from '@/components/overview/PlanSettingsCard'
 import { ProgressSummary, VerdictBanner } from '@/components/overview/ProgressSummary'
 import { SpecComparison } from '@/components/overview/SpecComparison'
 import { useAnalysis } from '@/lib/data'
+import { MAJORS } from '@/requirements/majors'
 
 export const Route = createFileRoute('/')({ component: OverviewPage })
 
@@ -18,14 +19,14 @@ function OverviewPage() {
         <header className="space-y-1">
           <h1 className="text-3xl">Overview</h1>
           <p className="text-sm text-muted-foreground">
-            Bachelor of Computer Science, 2026/27 calendar — what is mandatory, what is optional, and how far along you
-            are.
+            {MAJORS[analysis.plan.major].name}, 2026/27 calendar — what is mandatory, what is optional, and how far along
+            you are.
           </p>
         </header>
         <VerdictBanner analysis={analysis} />
         <ProgressSummary analysis={analysis} />
         <MustTakePanel analysis={analysis} />
-        <SpecComparison analysis={analysis} />
+        {MAJORS[analysis.plan.major].specs.length > 0 && <SpecComparison analysis={analysis} />}
       </div>
     </div>
   )

@@ -16,10 +16,12 @@
  *   ECE 222=CS 251.                                    ← equivalence note
  * and at the end a "Transfer Credits" table: SUBJ NBR Description Earned.
  */
-import { type Plan, SEQUENCES, type SequenceId, TRANSFER_TERM_ID } from '@/domain/plan'
+import type { Plan, SequenceId } from '@/domain/plan'
+import { SEQUENCES, TRANSFER_TERM_ID } from '@/domain/plan'
 import type { Program, SpecId } from '@/domain/requirements'
 import type { CourseCode } from '@/domain/types'
-import { SPECS, SPEC_IDS } from '@/requirements/specs'
+import { MAJORS } from '@/requirements/majors'
+import { SPECS } from '@/requirements/specs'
 import { effectiveSlots } from './allocate'
 import { type CatalogIndex, expandSet } from './catalog'
 import { nextTermCode } from './terms'
@@ -177,7 +179,7 @@ export function parseTranscript(text: string): TranscriptSummary {
     const code = `${row.subject}${row.number}`
     if (row.subject === 'SEQ') {
       // "SEQ 4  Co-op Sequence 4": the student's study/work sequence.
-      const id = `coop${row.number}`
+      const id = row.number === '6CA' ? 'cpa' : `coop${row.number}`
       if (id in SEQUENCES) summary.sequenceHint = id as SequenceId
     } else if (inTransfer || (row.transferCredit && current)) {
       summary.transfer.push({ code, title: row.title, status: 'transfer' })
@@ -196,11 +198,23 @@ export function parseTranscript(text: string): TranscriptSummary {
   return summary
 }
 
-/** Specializations named in the transcript program line ("…/Digital Hardware Option"). */
-export function detectSpecs(program: string | undefined): SpecId[] {
+/**
+ * Major named in the transcript program line ("Statistics, Honours, Co-operative Program"):
+ * the field of study before any "/specialization". Names shared by two degrees (Computer
+ * Science, Data Science) keep `current` when it matches, else the first registered major.
+ */
+export function detectMajor(program: string | undefined, current: string): string | null {
+  const field = program?.split(',')[0].split('/')[0].trim().toLowerCase()
+  if (!field) return null
+  const matches = Object.values(MAJORS).filter((m) => m.name.split(' (')[0].toLowerCase() === field)
+  return (matches.find((m) => m.id === current) ?? matches[0])?.id ?? null
+}
+
+/** Specializations named in the transcript program line ("…/Digital Hardware Option"), among `allowed`. */
+export function detectSpecs(program: string | undefined, allowed: SpecId[]): SpecId[] {
   if (!program) return []
   const lower = program.toLowerCase()
-  return SPEC_IDS.filter((id) => lower.includes(SPECS[id].shortName.toLowerCase()))
+  return allowed.filter((id) => lower.includes(SPECS[id].shortName.toLowerCase()))
 }
 
 /** Number of terms from `from` to `to` (both term codes, `from` ≤ `to`). */
@@ -210,13 +224,13 @@ export function termOffset(from: string, to: string): number {
   return n
 }
 
-/** The stated sequence ("SEQ 4") if any, else the pattern that best matches the transcript terms. */
-export function inferSequence(summary: TranscriptSummary, fallback: SequenceId): SequenceId {
-  if (summary.sequenceHint) return summary.sequenceHint
+/** The stated sequence ("SEQ 4") if any, else the candidate pattern that best matches the transcript terms. */
+export function inferSequence(summary: TranscriptSummary, fallback: SequenceId, candidates: SequenceId[]): SequenceId {
+  if (summary.sequenceHint && candidates.includes(summary.sequenceHint)) return summary.sequenceHint
   if (summary.terms.length === 0) return fallback
   const start = summary.terms[0].termCode
   let best: { id: SequenceId; score: number } = { id: fallback, score: -Infinity }
-  for (const id of Object.keys(SEQUENCES) as SequenceId[]) {
+  for (const id of candidates) {
     const pattern = SEQUENCES[id].pattern
     let score = 0
     for (const t of summary.terms) {
@@ -230,6 +244,7 @@ export function inferSequence(summary: TranscriptSummary, fallback: SequenceId):
 }
 
 export interface TranscriptImportOptions {
+  major: string
   sequence: SequenceId
   specs: SpecId[]
   /** `from` codes of equivalence notes to apply ("ECE 222=CS 251" → place CS 251 instead). */
@@ -339,6 +354,7 @@ export function planFromTranscript(
   return {
     plan: {
       ...plan,
+      major: options.major,
       sequence: options.sequence,
       startTerm,
       specs: options.specs,

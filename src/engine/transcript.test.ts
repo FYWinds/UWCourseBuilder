@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import type { Plan } from '@/domain/plan'
 import type { Catalog } from '@/domain/types'
 import { bcsCore } from '@/requirements/bcs'
+import { MAJORS } from '@/requirements/majors'
 import { SPECS } from '@/requirements/specs'
 import { type CatalogIndex, buildIndex } from './catalog'
 import { defaultEquivalences, inferSequence, parseTranscript, planFromTranscript } from './transcript'
@@ -59,7 +60,8 @@ MATH  1XX  MATH Transfer Credit  0.50
 End of Undergraduate Unofficial Transcript`
 
 const BASE: Plan = {
-  version: 1,
+  version: 2,
+  major: 'bcs',
   sequence: 'coop2',
   startTerm: '1269',
   specs: [],
@@ -104,10 +106,16 @@ describe('planFromTranscript', () => {
   it('places courses by term offset, skips no-credit rows and sets completed terms', () => {
     const s = parseTranscript(TRANSCRIPT)
     // Consistent with the user's co-op sequence → kept; the regular sequence has no work terms → replaced.
-    const sequence = inferSequence(s, 'coop2')
+    const sequences = MAJORS.bcs.sequences
+    const sequence = inferSequence(s, 'coop2', sequences)
     expect(sequence).toBe('coop2')
-    expect(inferSequence(s, 'regular')).not.toBe('regular')
-    const { plan, skipped } = planFromTranscript(BASE, s, idx, { sequence, specs: ['ai'], equivalences: ['ECE105'] })
+    expect(inferSequence(s, 'regular', sequences)).not.toBe('regular')
+    const { plan, skipped } = planFromTranscript(BASE, s, idx, {
+      major: 'bcs',
+      sequence,
+      specs: ['ai'],
+      equivalences: ['ECE105'],
+    })
     expect(plan.startTerm).toBe('1259')
     expect(plan.placements).toEqual({
       transfer: ['CHEM120'],
@@ -129,7 +137,7 @@ describe('planFromTranscript', () => {
   it('keeps later planned terms only when the 1A term is unchanged', () => {
     const s = parseTranscript(TRANSCRIPT)
     const existing: Plan = { ...BASE, startTerm: '1259', placements: { t3: ['CS245', 'CS246'], t5: ['CS341'] } }
-    const { plan } = planFromTranscript(existing, s, idx, { sequence: 'coop2', specs: [], equivalences: [] })
+    const { plan } = planFromTranscript(existing, s, idx, { major: 'bcs', sequence: 'coop2', specs: [], equivalences: [] })
     expect(plan.placements.t5).toEqual(['CS341'])
     expect(plan.placements.t3).not.toContain('CS246')
   })
@@ -162,7 +170,7 @@ describe('grade report format', () => {
   it('orders terms, reads the stated sequence and keeps titles ending in digits intact', () => {
     expect(s.terms.map((t) => t.termCode)).toEqual(['1239', '1249', '1251', '1259'])
     expect(s.sequenceHint).toBe('coop4')
-    expect(inferSequence(s, 'coop1')).toBe('coop4')
+    expect(inferSequence(s, 'coop1', MAJORS.bcs.sequences)).toBe('coop4')
     expect(s.program).toBe('Computer Science, Honours, Co-operative Program')
     const fall25 = s.terms.at(-1)?.courses
     expect(fall25?.map((c) => [c.code, c.title, c.status])).toEqual([
@@ -172,7 +180,7 @@ describe('grade report format', () => {
   })
 
   it('maps old "R" codes, skips withdrawn courses and stops completed terms at the current one', () => {
-    const { plan, skipped } = planFromTranscript(BASE, s, idx, { sequence: 'coop4', specs: [], equivalences: [] })
+    const { plan, skipped } = planFromTranscript(BASE, s, idx, { major: 'bcs', sequence: 'coop4', specs: [], equivalences: [] })
     expect(plan.placements.t4).toEqual(['CS251', 'PHYS111', 'EMLS129'])
     expect(plan.placements.t6).toEqual(['CS240', 'PHYS112'])
     expect(plan.completedThrough).toBe(5)

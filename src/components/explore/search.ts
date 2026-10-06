@@ -1,4 +1,5 @@
 import type { BreadthRule } from '@/domain/plan'
+import type { Program } from '@/domain/requirements'
 import type { Course, CourseCode, Faculty, Season } from '@/domain/types'
 import { type AuditResult, type CatalogIndex, type ClassifyResult, type CourseStatus, STATUS_ORDER, expandSet } from '@/engine'
 import { FACULTY_LABEL, SEASONS } from '@/components/course/labels'
@@ -76,8 +77,15 @@ const BREADTH_PRESETS: Record<BreadthRule, Preset[]> = {
   ],
 }
 
-export function presetsFor(rule: BreadthRule): Preset[] {
-  return [...COMMON_PRESETS, ...BREADTH_PRESETS[rule]]
+/** Breadth presets whose target slot exists among the plan's programs (BCS-style Elective / Breadth & Depth). */
+export function presetsFor(rule: BreadthRule, programs: Program[]): Preset[] {
+  const slots = new Set(
+    programs.flatMap((p) => [
+      ...p.sections.flatMap((s) => s.slots.map((slot) => `${p.id}:${slot.id}`)),
+      ...(p.depth ? [`${p.id}:${p.depth.id}`] : []),
+    ]),
+  )
+  return [...COMMON_PRESETS, ...BREADTH_PRESETS[rule].filter((p) => p.search.slot && slots.has(p.search.slot))]
 }
 
 /** Whether the current filters are exactly the preset's (search text aside). */
@@ -150,7 +158,7 @@ export function slotLabel(slot: string, audit: AuditResult): string | null {
   const label =
     pa.allocation.slots.find((s) => s.slot.id === slotId)?.slot.label ??
     pa.allocation.floors.find((f) => f.floor.id === slotId)?.floor.label ??
-    (pa.allocation.depth?.rule.id === slotId ? 'Depth' : undefined)
+    (pa.allocation.depth?.rule.id === slotId ? pa.allocation.depth.rule.name : undefined)
   return label ? `${pa.program.shortName} · ${label}` : null
 }
 

@@ -33,42 +33,57 @@ function programProgress(pa: ProgramAudit | undefined) {
 }
 
 export function depthHint(depth: DepthResult): string {
-  if (depth.satisfied) return `Depth: ${depth.subject} (${depth.via === 'chain' ? 'prerequisite chain' : '300-level course'})`
-  if (!depth.subject) return 'Depth: no subject started yet'
-  return `Depth: ${depth.subject} ${formatUnits(depth.units)} / ${formatUnits(depth.rule.units)} — needs a 300-level course or a prerequisite chain of three`
+  const { name, upperLevel, chainLength } = depth.rule
+  if (depth.satisfied) {
+    return `${name}: ${depth.subject}${depth.via === 'chain' ? ' (prerequisite chain)' : upperLevel > 100 ? ` (${upperLevel}-level course)` : ''}`
+  }
+  if (!depth.subject) return `${name}: no subject started yet`
+  const need = [upperLevel > 100 && `a ${upperLevel}-level course`, chainLength !== null && `a prerequisite chain of ${chainLength}`]
+    .filter(Boolean)
+    .join(' or ')
+  return `${name}: ${depth.subject} ${formatUnits(depth.units)} / ${formatUnits(depth.rule.units)}${need ? ` — needs ${need}` : ''}`
 }
 
-const CORE_SECTIONS: { id: string; label: string }[] = [
-  { id: 'communication', label: 'Communication' },
-  { id: 'cs-required', label: 'Required CS' },
-  { id: 'math-required', label: 'Required math' },
-  { id: 'cs-upper', label: 'Upper-year CS' },
-]
+/** Short labels for the overview; other sections use their audit label. */
+const SECTION_LABEL: Record<string, string> = {
+  'list-a': 'List A',
+  communication: 'Communication',
+  'cs-required': 'Required CS',
+  'math-required': 'Required math',
+  'cs-upper': 'Upper-year CS',
+}
+const TOTAL_LABEL: Record<string, string> = { total: 'Total units', math: 'Math units', nonmath: 'Non-math units' }
 
 export function summaryRows({ audit, takenAudit }: Analysis): SummaryRow[] {
   const core = coreOf(audit)
   const takenCore = coreOf(takenAudit)
   const rows: SummaryRow[] = []
 
-  for (const id of ['total', 'nonmath']) {
-    const t = core?.totals.find((x) => x.id === id)
-    if (!t) continue
-    const taken = takenCore?.totals.find((x) => x.id === id)?.have ?? 0
+  for (const t of core?.totals ?? []) {
     rows.push({
-      id,
-      label: id === 'total' ? 'Total units' : 'Non-math units',
+      id: t.id,
+      label: TOTAL_LABEL[t.id] ?? t.label,
       need: t.units,
-      taken,
+      taken: takenCore?.totals.find((x) => x.id === t.id)?.have ?? 0,
       total: t.have,
       satisfied: t.satisfied,
       unit: 'units',
     })
   }
 
-  for (const s of CORE_SECTIONS) {
+  for (const s of core?.program.sections ?? []) {
+    if (s.id === 'breadth') continue
     const all = sectionProgress(core, s.id)
     if (all.need === 0) continue
-    rows.push({ id: s.id, label: s.label, need: all.need, taken: sectionProgress(takenCore, s.id).have, total: all.have, satisfied: all.satisfied, unit: 'units' })
+    rows.push({
+      id: s.id,
+      label: SECTION_LABEL[s.id] ?? s.label,
+      need: all.need,
+      taken: sectionProgress(takenCore, s.id).have,
+      total: all.have,
+      satisfied: all.satisfied,
+      unit: 'units',
+    })
   }
 
   const breadth = sectionProgress(core, 'breadth')
@@ -83,6 +98,20 @@ export function summaryRows({ audit, takenAudit }: Analysis): SummaryRow[] {
       satisfied: breadth.satisfied && (floor?.satisfied ?? true),
       unit: 'units',
       hint: floor ? `${formatUnits(floor.units)} / ${formatUnits(floor.floor.units)} units at the 200-level or higher` : undefined,
+    })
+  }
+
+  const coreDepth = core?.allocation.depth
+  if (coreDepth) {
+    rows.push({
+      id: coreDepth.rule.id,
+      label: coreDepth.rule.name,
+      need: coreDepth.rule.units,
+      taken: Math.min(takenCore?.allocation.depth?.units ?? 0, coreDepth.units),
+      total: coreDepth.units,
+      satisfied: coreDepth.satisfied,
+      unit: 'units',
+      hint: depthHint(coreDepth),
     })
   }
 

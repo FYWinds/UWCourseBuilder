@@ -1,12 +1,13 @@
 import type { SpecId } from './requirements'
 import type { CourseCode, Season, TermLevel } from './types'
 
-export type SequenceId = 'coop1' | 'coop2' | 'coop3' | 'coop4' | 'regular'
+export type SequenceId = 'coop1' | 'coop2' | 'coop3' | 'coop4' | 'amath' | 'cpa' | 'regular'
 export type TermKind = 'study' | 'work' | 'off'
 
 /**
- * Study/work sequences for Computer Science (2026/27 calendar, "Study/Work Sequences Chart").
- * Every sequence starts in a Fall term. 'WT' = work term.
+ * Study/work sequences of the Faculty of Mathematics (2026/27; Math "Co-op sequence charts"
+ * and "Sequence Restrictions by Program"). Every sequence starts in a Fall term. 'WT' = work term.
+ * Majors list the sequences they offer (`Major.sequences`).
  */
 export const SEQUENCES: Record<SequenceId, { label: string; coop: boolean; pattern: string[] }> = {
   coop1: {
@@ -28,6 +29,16 @@ export const SEQUENCES: Record<SequenceId, { label: string; coop: boolean; patte
     label: 'Co-op Sequence 4',
     coop: true,
     pattern: ['1A', '1B', '2A', 'WT', '2B', 'WT', '3A', 'WT', '3B', 'WT', '4A', 'WT', 'WT', '4B'],
+  },
+  amath: {
+    label: 'Applied Math preferred sequence',
+    coop: true,
+    pattern: ['1A', '1B', 'WT', '2A', 'WT', '2B', 'WT', '3A', 'WT', '3B', 'WT', 'WT', '4A', '4B'],
+  },
+  cpa: {
+    label: 'SEQ 6CA (Option 1)',
+    coop: true,
+    pattern: ['1A', '1B', 'off', '2A', 'WT', '2B', 'WT', '3A', '3B', 'WT', '4A', 'WT', '4B'],
   },
   regular: {
     label: 'Regular (non co-op)',
@@ -53,7 +64,9 @@ export interface PlanTerm {
 }
 
 export interface Plan {
-  version: 1
+  version: 2
+  /** Key into the major registry (`src/requirements/majors.ts`). */
+  major: string
   sequence: SequenceId
   /** Term code of the 1A (Fall) term. */
   startTerm: string
@@ -64,7 +77,7 @@ export interface Plan {
   placements: Record<string, CourseCode[]>
   /** Index of the last completed term; terms after it are planned. -1 = none. */
   completedThrough: number
-  /** Non-math elective rule; unset = chosen from the 1A term (see `resolveBreadthRule`). */
+  /** Non-math elective rule override (BCS); unset = chosen from the 1A term (see `resolveBreadthRule`). */
   breadthRule?: BreadthRule
 }
 
@@ -79,12 +92,4 @@ export type BreadthRule = 'breadth-depth' | 'elective'
 export const BREADTH_RULES: Record<BreadthRule, { label: string; calendars: string }> = {
   'breadth-depth': { label: 'Breadth & Depth', calendars: '2025/26 and earlier' },
   elective: { label: 'Elective Requirement', calendars: '2026/27' },
-}
-
-/** First 1A term under the 2026/27 calendar (Fall 2026). */
-const ELECTIVE_RULE_FROM = '1269'
-
-/** Students default to the calendar in effect when they entered the Faculty of Mathematics. */
-export function resolveBreadthRule(plan: Pick<Plan, 'breadthRule' | 'startTerm'>): BreadthRule {
-  return plan.breadthRule ?? (plan.startTerm < ELECTIVE_RULE_FROM ? 'breadth-depth' : 'elective')
 }

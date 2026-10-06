@@ -8,27 +8,33 @@
  * data/raw/kuali/programs (pnpm data:kuali).
  */
 import type { BreadthRule } from '@/domain/plan'
-import type { CourseSet, Program, Section } from '@/domain/requirements'
+import type { CourseSet, LevelFloor, Major, Program, Section } from '@/domain/requirements'
 import type { CourseCode } from '@/domain/types'
 import { CALENDAR_BASE, CHECKLIST_BASE, oneOf, pick } from './helpers'
-
-const COMM_LIST_1_BASE = ['COMMST100', 'COMMST223', 'EMLS101', 'EMLS102', 'EMLS129', 'ENGL109', 'ENGL129']
-const COMM_LIST_2_BASE = [
-  'COMMST225', 'COMMST227', 'COMMST228', 'EMLS103', 'EMLS104', 'EMLS110', 'ENGL101B',
-  'ENGL108B', 'ENGL108D', 'ENGL208B', 'ENGL209', 'ENGL210E', 'ENGL210F', 'ENGL378',
-]
+import {
+  COMM_LIST_1,
+  COMM_LIST_2,
+  MATH_COURSES,
+  MATH_REQUISITE_TOKENS,
+  MATH_SEQUENCES,
+  NON_MATH,
+  NON_MATH_SUBJECTS,
+  mathCoop,
+  notMathCrossListed,
+} from './math-faculty'
+import { SPEC_IDS } from './specs'
 
 /**
- * Communication lists. ENGL 119 is a List 2 course up to 2025/26; the CS checklist moves
- * it to List 1 from 2026/27 (the calendar catches up in 2027/28).
+ * Communication lists. ENGL 119 is a List 2 course in the calendar; the CS checklist
+ * moves it to List 1 from 2026/27 (the calendar catches up in 2027/28).
  */
 export function commLists(rule: BreadthRule): { list1: CourseCode[]; list2: CourseCode[] } {
   return rule === 'elective'
-    ? { list1: [...COMM_LIST_1_BASE, 'ENGL119'], list2: COMM_LIST_2_BASE }
-    : { list1: COMM_LIST_1_BASE, list2: [...COMM_LIST_2_BASE, 'ENGL119'] }
+    ? { list1: [...COMM_LIST_1, 'ENGL119'], list2: COMM_LIST_2.filter((c) => c !== 'ENGL119') }
+    : { list1: COMM_LIST_1, list2: COMM_LIST_2 }
 }
 
-function communicationSection(rule: BreadthRule): Section {
+export function communicationSection(rule: BreadthRule): Section {
   const { list1, list2 } = commLists(rule)
   return {
     id: 'communication',
@@ -46,23 +52,33 @@ function communicationSection(rule: BreadthRule): Section {
   }
 }
 
-/** Subjects the calendar groups with Arts for the breadth (elective) requirement. */
-export const BREADTH_EXTRA_SUBJECTS = ['BET', 'BUS', 'COMM', 'STV']
-
-const notMathCrossListed = (set: CourseSet): CourseSet => ({
-  minus: [set, { predicate: 'crossListedWithMath' }],
-})
-
 export const BREADTH_ARTS: CourseSet = notMathCrossListed({
-  union: [{ faculty: ['ART'] }, { subject: BREADTH_EXTRA_SUBJECTS }],
+  union: [{ faculty: ['ART'] }, { subject: NON_MATH_SUBJECTS }],
 })
 export const BREADTH_SCIENCE: CourseSet = notMathCrossListed({ faculty: ['ENV', 'AHS', 'SCI'] })
 export const BREADTH_ANY: CourseSet = { union: [BREADTH_ARTS, BREADTH_SCIENCE] }
 
-/** Non-math courses: outside the Faculty of Mathematics, plus the breadth subjects. */
-export const NON_MATH: CourseSet = notMathCrossListed({
-  union: [{ faculty: ['ART', 'ENG', 'ENV', 'AHS', 'SCI', 'OTHER'] }, { subject: BREADTH_EXTRA_SUBJECTS }],
-})
+/** BCS Elective Requirement (2026/27): 4.0 units by faculty, 1.0 unit of them at the 200-level or higher. */
+export const ELECTIVE_SECTION: Section = {
+  id: 'breadth',
+  label: 'Elective (breadth) requirement — 4.0 units',
+  slots: [
+    pick('breadthA', 'Arts, or BET / BUS / COMM / STV', 2, BREADTH_ARTS),
+    pick('breadthB', 'Environment, Health, or Science', 2, BREADTH_SCIENCE),
+    pick('breadthC', 'Any of the above', 4, BREADTH_ANY, {
+      note: 'Courses used for the Communication Requirement and courses cross-listed with a math course do not count.',
+    }),
+  ],
+}
+
+export const ELECTIVE_FLOOR: LevelFloor = {
+  id: 'breadth200',
+  label: 'At least 1.0 unit of the breadth courses at the 200-level or higher',
+  slots: ['breadthA', 'breadthB', 'breadthC'],
+  units: 1,
+  level: 200,
+  absorbingSlot: 'breadthC',
+}
 
 export const bcsCore: Program = {
   id: 'core',
@@ -129,28 +145,9 @@ export const bcsCore: Program = {
       ],
     },
     communicationSection('elective'),
-    {
-      id: 'breadth',
-      label: 'Elective (breadth) requirement — 4.0 units',
-      slots: [
-        pick('breadthA', 'Arts, or BET / BUS / COMM / STV', 2, BREADTH_ARTS),
-        pick('breadthB', 'Environment, Health, or Science', 2, BREADTH_SCIENCE),
-        pick('breadthC', 'Any of the above', 4, BREADTH_ANY, {
-          note: 'Courses used for the Communication Requirement and courses cross-listed with a math course do not count.',
-        }),
-      ],
-    },
+    ELECTIVE_SECTION,
   ],
-  levelFloors: [
-    {
-      id: 'breadth200',
-      label: 'At least 1.0 unit of the breadth courses at the 200-level or higher',
-      slots: ['breadthA', 'breadthB', 'breadthC'],
-      units: 1,
-      level: 200,
-      absorbingSlot: 'breadthC',
-    },
-  ],
+  levelFloors: [ELECTIVE_FLOOR],
   totals: [
     { id: 'total', label: 'Total units (40+ unique courses)', units: 20 },
     { id: 'nonmath', label: 'Non-math units', units: 5, from: NON_MATH },
@@ -202,7 +199,7 @@ export const breadthDepthProgram: Program = {
       id: 'breadth',
       label: 'Breadth — 3.0 units',
       slots: [
-        pick('humanities', 'Humanities', 2, notMathCrossListed({ minus: [{ subject: HUMANITIES }, { list: COMM_LIST_1_BASE }] }), {
+        pick('humanities', 'Humanities', 2, notMathCrossListed({ minus: [{ subject: HUMANITIES }, { list: COMM_LIST_1 }] }), {
           note: 'Communication List 1 courses do not count; COMMST/ENGL courses only on List 2 may count here and for communication.',
         }),
         pick('socialSciences', 'Social Sciences', 2, notMathCrossListed({ subject: SOCIAL_SCIENCES })),
@@ -213,6 +210,7 @@ export const breadthDepthProgram: Program = {
   ],
   depth: {
     id: 'depth',
+    name: 'Depth',
     label: 'Depth: 1.5 units in one subject, with 0.5 unit at the 300-level or a prerequisite chain of three',
     from: NON_MATH,
     units: 1.5,
@@ -230,25 +228,70 @@ export function corePrograms(rule: BreadthRule): Program[] {
   return rule === 'elective' ? [bcsCore] : [bcsCoreBreadthDepth, breadthDepthProgram]
 }
 
-export const coopProgram: Program = {
-  id: 'coop',
-  kind: 'coop',
-  name: 'Co-operative education requirements',
-  shortName: 'Co-op',
-  calendarUrl: `${CALENDAR_BASE}/r1y1WO5ka`,
-  checklistUrl: `${CHECKLIST_BASE}/2026-present-bcs-final1.pdf`,
-  enrolmentCode: 'Co-operative',
-  sections: [
-    {
-      id: 'pd',
-      label: 'Professional Development (PD)',
-      slots: [
-        oneOf('pd1', ['PD1'], 0.5, 'Take in an academic term before the first work term.'),
-        oneOf('pd11', ['PD11'], 0.5, 'Take during the first work term.'),
-        oneOf('pd10', ['PD10'], 0.5, 'Should be taken during a work term.'),
-        pick('pdOther', 'Two additional PD courses', 2, { subject: ['PD'] }),
-      ],
-    },
-  ],
-  notes: ['Minimum of five credited work terms, at least three of them standard work terms.'],
+const BCS_COOP = mathCoop({ degreePid: 'r1y1WO5ka', pd10: true, extra: 2 })
+
+/** Fields every BCS major shares (degree-level requirements in r1y1WO5ka). */
+const BCS_DEGREE = {
+  degree: 'bcs',
+  requisiteTokens: MATH_REQUISITE_TOKENS,
+  sequences: MATH_SEQUENCES,
+  fullTimeTerms: { coop: 8, regular: 7 },
+  coop: BCS_COOP,
+} satisfies Partial<Major>
+
+export const bcsMajor: Major = {
+  ...BCS_DEGREE,
+  id: 'bcs',
+  name: bcsCore.name,
+  shortName: 'BCS',
+  pid: 'SJPJkCAih',
+  enrolmentCode: 'H-Computer Science (BCS)',
+  specs: SPEC_IDS,
+  breadthRuleChoice: true,
+  programs: corePrograms,
+  list1: (rule) => commLists(rule).list1,
+}
+
+/**
+ * Another BCS major (Data Science): its own course requirements plus the BCS
+ * communication and Elective Requirements, 20.0 units, and its math-unit minimum.
+ */
+export function bcsDegreeMajor(spec: {
+  id: string
+  pid: string
+  name: string
+  shortName: string
+  enrolmentCode: string
+  mathUnits: number
+  sections: Section[]
+  notes?: string[]
+}): Major {
+  const core: Program = {
+    id: 'core',
+    kind: 'core',
+    name: spec.name,
+    shortName: spec.shortName,
+    calendarUrl: `${CALENDAR_BASE}/${spec.pid}`,
+    enrolmentCode: spec.enrolmentCode,
+    sections: [...spec.sections, communicationSection('elective'), ELECTIVE_SECTION],
+    levelFloors: [ELECTIVE_FLOOR],
+    totals: [
+      { id: 'total', label: 'Total units', units: 20 },
+      { id: 'math', label: 'Math units', units: spec.mathUnits, from: MATH_COURSES },
+      { id: 'nonmath', label: 'Non-math units', units: 5, from: NON_MATH },
+    ],
+    notes: spec.notes,
+  }
+  return {
+    ...BCS_DEGREE,
+    id: spec.id,
+    name: spec.name,
+    shortName: spec.shortName,
+    pid: spec.pid,
+    enrolmentCode: spec.enrolmentCode,
+    specs: [],
+    breadthRuleChoice: false,
+    programs: () => [core],
+    list1: () => commLists('elective').list1,
+  }
 }

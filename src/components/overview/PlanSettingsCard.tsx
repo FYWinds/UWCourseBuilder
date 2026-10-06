@@ -2,12 +2,23 @@ import type { ReactNode } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { BREADTH_RULES, type BreadthRule, SEQUENCES, type SequenceId, resolveBreadthRule } from '@/domain/plan'
+import type { BreadthRule, SequenceId } from '@/domain/plan'
+import { BREADTH_RULES, SEQUENCES } from '@/domain/plan'
+import { DEGREE_LABEL } from '@/domain/requirements'
 import { buildTerms, termName } from '@/engine'
-import { SPECS, SPEC_IDS } from '@/requirements/specs'
+import { MAJORS, MAJORS_BY_DEGREE, resolveBreadthRule } from '@/requirements/majors'
+import { SPECS } from '@/requirements/specs'
 import { usePlanStore } from '@/store/plan'
 import { PlanFileActions } from './PlanFileActions'
 import { TranscriptImport } from './TranscriptImport'
@@ -29,12 +40,14 @@ function Field({ id, label, children }: { id: string; label: string; children: R
 
 export function PlanSettingsCard() {
   const plan = usePlanStore((s) => s.plan)
+  const setMajor = usePlanStore((s) => s.setMajor)
   const setSequence = usePlanStore((s) => s.setSequence)
   const setStartTerm = usePlanStore((s) => s.setStartTerm)
   const setCompletedThrough = usePlanStore((s) => s.setCompletedThrough)
   const setWtLimit = usePlanStore((s) => s.setWtLimit)
   const toggleSpec = usePlanStore((s) => s.toggleSpec)
   const setBreadthRule = usePlanStore((s) => s.setBreadthRule)
+  const major = MAJORS[plan.major]
   const rule = resolveBreadthRule(plan)
   const terms = buildTerms(plan)
   const coop = SEQUENCES[plan.sequence].coop
@@ -47,13 +60,34 @@ export function PlanSettingsCard() {
         <CardDescription>Saved in this browser.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Field id="major" label="Major">
+          <Select value={plan.major} onValueChange={setMajor}>
+            <SelectTrigger id="major" className="w-full" title={major.name}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MAJORS_BY_DEGREE.filter((g) => g.majors.length > 0).map((g) => (
+                <SelectGroup key={g.degree}>
+                  <SelectLabel>{DEGREE_LABEL[g.degree]}</SelectLabel>
+                  {g.majors.map((m) => (
+                    <SelectItem key={m.id} value={m.id} title={m.name}>
+                      {m.shortName}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{major.name}</p>
+        </Field>
+
         <Field id="sequence" label="Study / work sequence">
           <Select value={plan.sequence} onValueChange={(v) => setSequence(v as SequenceId)}>
             <SelectTrigger id="sequence" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(Object.keys(SEQUENCES) as SequenceId[]).map((id) => (
+              {major.sequences.map((id) => (
                 <SelectItem key={id} value={id}>
                   {SEQUENCES[id].label}
                 </SelectItem>
@@ -80,27 +114,29 @@ export function PlanSettingsCard() {
           </Select>
         </Field>
 
-        <Field id="breadth-rule" label="Non-math elective rule">
-          <Select
-            value={plan.breadthRule ?? AUTO}
-            onValueChange={(v) => setBreadthRule(v === AUTO ? undefined : (v as BreadthRule))}
-          >
-            <SelectTrigger id="breadth-rule" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={AUTO}>Auto from 1A term — {BREADTH_RULES[rule].label}</SelectItem>
-              {(Object.keys(BREADTH_RULES) as BreadthRule[]).map((id) => (
-                <SelectItem key={id} value={id}>
-                  {BREADTH_RULES[id].label} ({BREADTH_RULES[id].calendars})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Your calendar is the one in effect when you entered Math; a later one needs a Plan Modification Form.
-          </p>
-        </Field>
+        {major.breadthRuleChoice && (
+          <Field id="breadth-rule" label="Non-math elective rule">
+            <Select
+              value={plan.breadthRule ?? AUTO}
+              onValueChange={(v) => setBreadthRule(v === AUTO ? undefined : (v as BreadthRule))}
+            >
+              <SelectTrigger id="breadth-rule" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={AUTO}>Auto from 1A term — {BREADTH_RULES[rule].label}</SelectItem>
+                {(Object.keys(BREADTH_RULES) as BreadthRule[]).map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {BREADTH_RULES[id].label} ({BREADTH_RULES[id].calendars})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Your calendar is the one in effect when you entered Math; a later one needs a Plan Modification Form.
+            </p>
+          </Field>
+        )}
 
         <Field id="completed-through" label="Completed through">
           <Select value={String(completed)} onValueChange={(v) => setCompletedThrough(Number(v))}>
@@ -135,19 +171,22 @@ export function PlanSettingsCard() {
           />
         </div>
 
-        <Separator />
-
-        <fieldset className="space-y-2">
-          <legend className="mb-2 text-xs font-medium text-muted-foreground">Specializations</legend>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-            {SPEC_IDS.map((id) => (
-              <Label key={id} title={SPECS[id].name} className="cursor-pointer items-start text-sm font-normal leading-snug">
-                <Checkbox checked={plan.specs.includes(id)} onCheckedChange={() => toggleSpec(id)} className="mt-0.5" />
-                {SPECS[id].shortName}
-              </Label>
-            ))}
-          </div>
-        </fieldset>
+        {major.specs.length > 0 && (
+          <>
+            <Separator />
+            <fieldset className="space-y-2">
+              <legend className="mb-2 text-xs font-medium text-muted-foreground">Specializations</legend>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {major.specs.map((id) => (
+                  <Label key={id} title={SPECS[id].name} className="cursor-pointer items-start text-sm font-normal leading-snug">
+                    <Checkbox checked={plan.specs.includes(id)} onCheckedChange={() => toggleSpec(id)} className="mt-0.5" />
+                    {SPECS[id].shortName}
+                  </Label>
+                ))}
+              </div>
+            </fieldset>
+          </>
+        )}
 
         <Separator />
 

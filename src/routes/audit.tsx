@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAnalysis } from '@/lib/data'
+import { MAJORS } from '@/requirements/majors'
 
 export const Route = createFileRoute('/audit')({ component: AuditPage })
 
@@ -27,7 +28,7 @@ function Legend() {
 }
 
 function AuditPage() {
-  const { idx, audit, takenAudit, classification } = useAnalysis()
+  const { idx, plan, audit, takenAudit, classification } = useAnalysis()
   const [scope, setScope] = useState<Scope>('all')
   const shown = scope === 'all' ? audit : takenAudit
   const placedStatus: PlacedStatus = useMemo(() => new Map(audit.placed.map((p) => [p.code, p.status])), [audit.placed])
@@ -39,7 +40,7 @@ function AuditPage() {
         <div className="space-y-1">
           <h1 className="text-3xl">Degree audit</h1>
           <p className="text-sm text-muted-foreground">
-            Bachelor of Computer Science, 2026/27 calendar — laid out like the official checklist.
+            {MAJORS[plan.major].name}, 2026/27 calendar — laid out like the official checklist.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 print:hidden">

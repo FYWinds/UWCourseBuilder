@@ -1,0 +1,28 @@
+name: Algorithm error
+description: The requirements are right but the result is wrong — audit allocation, "must take" status, planner warnings, or transcript import.
+title: "[Algorithm] "
+labels: [engine]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: Plan (optional)
+      description: Overview → Export, then paste the JSON here. It contains only your program settings and course codes. Remove anything you prefer not to share.
+      render: json
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: URL of the page where you saw it.

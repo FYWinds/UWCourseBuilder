@@ -1,0 +1,29 @@
+name: Data error
+description: Course information is wrong — title, units, prerequisites, antirequisites, cross-listings, faculty, or offering history.
+title: "[Data] "
+labels: [data]
+body:
+  - type: input
+    id: courses
+    attributes:
+      label: Course(s)
+      placeholder: e.g. CS 341, STAT 231
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+      description: What the site shows, and what it should show.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: Link to the Undergraduate Calendar page, Quest, or another official source.
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: URL of the page where you saw it.

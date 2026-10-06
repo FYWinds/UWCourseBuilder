@@ -1,0 +1,21 @@
+name: UI problem
+description: Something looks broken, is hard to use, or does not respond.
+title: "[UI] "
+labels: [ui]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is the problem?
+      description: Screenshots help.
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Page
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: e.g. Chrome 140, Windows 11

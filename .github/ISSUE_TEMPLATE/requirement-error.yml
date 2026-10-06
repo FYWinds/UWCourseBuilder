@@ -1,0 +1,28 @@
+name: Requirement error
+description: A degree, major, or specialization requirement does not match the Undergraduate Calendar.
+title: "[Requirement] "
+labels: [requirements]
+body:
+  - type: input
+    id: program
+    attributes:
+      label: Program
+      placeholder: e.g. Statistics (Bachelor of Mathematics - Honours)
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement
+      description: The audit row that is wrong.
+      placeholder: e.g. 2 STAT courses at the 400-level
+  - type: textarea
+    id: problem
+    attributes:
+      label: What does the calendar say, and what does the site do?
+    validations:
+      required: true
+  - type: input
+    id: calendar
+    attributes:
+      label: Calendar link
